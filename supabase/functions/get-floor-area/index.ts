@@ -38,6 +38,11 @@ const compareAddresses = (propertyAddress: string, searchAddress: string): boole
   return normalizedProperty === normalizedSearch;
 };
 
+const convertToSquareMeters = (squareFeet: number | null): number | null => {
+  if (squareFeet === null) return null;
+  return Number((squareFeet * 0.092903).toFixed(2));
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -122,6 +127,7 @@ serve(async (req) => {
     const properties = data.known_floor_areas?.map((prop: any) => ({
       address: prop.address,
       floor_area_sq_ft: prop.square_feet || null,
+      floor_area_sq_m: convertToSquareMeters(prop.square_feet),
       habitable_rooms: prop.habitable_rooms || 0,
       inspection_date: prop.inspection_date || new Date().toISOString(),
     })) || [];

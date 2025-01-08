@@ -6,6 +6,7 @@ import { useState } from "react";
 interface PropertyData {
   address: string;
   floor_area_sq_ft: number | null;
+  floor_area_sq_m: number | null;
   habitable_rooms: number;
   inspection_date: string;
 }
@@ -98,6 +99,13 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                 </TableHead>
                 <TableHead 
                   className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
+                  onClick={() => sortData('floor_area_sq_m')}
+                >
+                  Floor Area (Square Meters)
+                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
+                </TableHead>
+                <TableHead 
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('habitable_rooms')}
                 >
                   Habitable Rooms
@@ -125,6 +133,9 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                   <TableCell className="font-medium text-gray-900 whitespace-nowrap">{property.address}</TableCell>
                   <TableCell className="text-right text-gray-700 whitespace-nowrap">
                     {property.floor_area_sq_ft ? property.floor_area_sq_ft.toLocaleString() : 'N/A'}
+                  </TableCell>
+                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
+                    {property.floor_area_sq_m ? property.floor_area_sq_m.toLocaleString() : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right text-gray-700 whitespace-nowrap">{property.habitable_rooms}</TableCell>
                   <TableCell className="text-right text-gray-700 whitespace-nowrap">
