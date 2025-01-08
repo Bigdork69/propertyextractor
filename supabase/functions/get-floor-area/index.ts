@@ -19,7 +19,23 @@ const normalizeAddress = (address: string): string => {
     .replace(/flat/i, '')         // Remove 'flat' variations
     .replace(/(ground|first|second|third|fourth|fifth|top|basement)\s+floor/i, '') // Remove floor descriptions
     .replace(/(left|right)/i, '') // Remove left/right descriptions
+    .replace(/\s*,\s*/g, ' ')     // Remove commas and surrounding spaces
     .trim();                      // Trim leading/trailing spaces
+};
+
+const compareAddresses = (propertyAddress: string, searchAddress: string): boolean => {
+  const normalizedProperty = normalizeAddress(propertyAddress);
+  const normalizedSearch = normalizeAddress(searchAddress);
+  
+  console.log(`Detailed address comparison:
+    Property (original): "${propertyAddress}"
+    Property (normalized): "${normalizedProperty}"
+    Search (original): "${searchAddress}"
+    Search (normalized): "${normalizedSearch}"
+    Exact match: ${normalizedProperty === normalizedSearch}
+  `);
+  
+  return normalizedProperty === normalizedSearch;
 };
 
 serve(async (req) => {
@@ -116,20 +132,21 @@ serve(async (req) => {
     
     if (!isPostcodeOnly) {
       const searchAddressWithoutPostcode = address.replace(postcode, '').trim();
-      const normalizedSearchAddress = normalizeAddress(searchAddressWithoutPostcode);
-      console.log('Normalized search address:', normalizedSearchAddress);
+      console.log('Search address without postcode:', searchAddressWithoutPostcode);
 
-      const exactMatches = properties.filter((prop) => {
-        const normalizedPropertyAddress = normalizeAddress(prop.address);
-        console.log(`Comparing addresses:
-          Property: "${normalizedPropertyAddress}"
-          Search:   "${normalizedSearchAddress}"
-          Match:    ${normalizedPropertyAddress.includes(normalizedSearchAddress)}`);
-        return normalizedPropertyAddress.includes(normalizedSearchAddress);
-      });
+      const exactMatches = properties.filter((prop) => 
+        compareAddresses(prop.address, searchAddressWithoutPostcode)
+      );
 
-      console.log('Exact matches found:', exactMatches.length);
-      console.log('Exact matches:', exactMatches);
+      console.log(`Found ${exactMatches.length} exact matches`);
+      if (exactMatches.length === 0) {
+        console.log('No exact matches found. Properties checked:');
+        properties.forEach((prop) => {
+          console.log(`Checked property: ${prop.address}`);
+        });
+      } else {
+        console.log('Exact matches:', exactMatches);
+      }
 
       return new Response(
         JSON.stringify({
