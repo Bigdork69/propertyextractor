@@ -10,24 +10,6 @@ const SearchBar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const formatUKAddress = (address: string) => {
-    // Add London if not present as PropertyData API works better with city
-    if (!address.toLowerCase().includes("london")) {
-      address = `${address}, London`;
-    }
-    
-    // If postcode is present but not at the end, rearrange it
-    const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2})/i;
-    const postcode = address.match(postcodeRegex);
-    if (postcode) {
-      // Remove postcode from original position and add it to the end
-      address = address.replace(postcodeRegex, "").trim();
-      address = `${address}, ${postcode[0]}`;
-    }
-    
-    return address;
-  };
-
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim()) {
@@ -39,13 +21,10 @@ const SearchBar = () => {
       return;
     }
 
-    const formattedAddress = formatUKAddress(address.trim());
-    console.log("Searching with formatted address:", formattedAddress);
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('get-floor-area', {
-        body: { address: formattedAddress }
+        body: { address: address.trim() }
       });
 
       if (error) throw error;
@@ -81,7 +60,7 @@ const SearchBar = () => {
       <div className="relative w-full bg-white/95 rounded-full overflow-hidden flex">
         <Input
           type="text"
-          placeholder="Enter address (e.g. 15 Venetia Road, London, W5 4JD)"
+          placeholder="Enter address to find floor area..."
           className="pl-12 pr-6 py-6 w-full border-none text-lg"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
