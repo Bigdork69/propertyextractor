@@ -15,7 +15,7 @@ const SearchBar = () => {
     if (!address.trim()) {
       toast({
         title: "Error",
-        description: "Please enter an address",
+        description: "Please enter an address with a valid UK postcode",
         variant: "destructive",
       });
       return;
@@ -73,7 +73,7 @@ const SearchBar = () => {
       <div className="relative w-full bg-white/95 rounded-full overflow-hidden flex">
         <Input
           type="text"
-          placeholder="Enter full property address (e.g. 15 Venetia Road, London, W5 4JD)"
+          placeholder="Enter full property address with postcode (e.g. 15 Venetia Road, London, W5 4JD)"
           className="pl-12 pr-6 py-6 w-full border-none text-lg"
           value={address}
           onChange={(e) => setAddress(e.target.value)}

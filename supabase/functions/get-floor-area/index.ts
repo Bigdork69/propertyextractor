@@ -37,8 +37,28 @@ serve(async (req) => {
 
     const PROPERTY_DATA_API_KEY = Deno.env.get('PROPERTY_DATA_API_KEY');
     
+    // Extract postcode using regex
+    const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2})/i;
+    const postcodeMatch = formattedAddress.match(postcodeRegex);
+    
+    if (!postcodeMatch) {
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          message: 'No valid UK postcode found in the address'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
+        }
+      );
+    }
+
+    const postcode = postcodeMatch[0].replace(/\s/g, '');
+    console.log('Extracted postcode:', postcode);
+    
     // Call PropertyData API with the correct endpoint and parameters
-    const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&address=${encodeURIComponent(formattedAddress)}`;
+    const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${postcode}`;
     console.log('Calling PropertyData API URL:', propertyDataUrl);
     
     const response = await fetch(propertyDataUrl);
