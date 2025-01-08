@@ -65,6 +65,41 @@ serve(async (req) => {
     const data = await response.json();
     console.log('PropertyData API response:', data);
 
+    // Check if the API returned an error
+    if (data.status === 'error') {
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          message: data.message || 'Failed to fetch floor area data'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
+        }
+      );
+    }
+
+    // Check if we have actual floor area data
+    if (!data.data || !data.data.length) {
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          message: 'No floor area data available for this postcode'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404
+        }
+      );
+    }
+
+    // Calculate average floor area
+    const totalFloorArea = data.data.reduce((sum: number, item: any) => sum + item.total_floor_area, 0);
+    const averageFloorArea = totalFloorArea / data.data.length;
+    
+    // Convert to square feet (1 sq m = 10.764 sq ft)
+    const averageFloorAreaSqFt = averageFloorArea * 10.764;
+
     // Log the search in Supabase
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
@@ -81,22 +116,14 @@ serve(async (req) => {
       console.error('Error logging search:', logError);
     }
 
-    // Return the API response with proper error handling
-    if (data.status === 'error') {
-      return new Response(
-        JSON.stringify({
-          status: 'error',
-          message: data.message || 'Failed to fetch floor area data'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
-      );
-    }
-
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify({
+        status: 'success',
+        data: {
+          total_floor_area_sq_m: Math.round(averageFloorArea * 100) / 100,
+          total_floor_area_sq_ft: Math.round(averageFloorAreaSqFt * 100) / 100
+        }
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

@@ -27,7 +27,12 @@ const SearchBar = () => {
         body: { address: address.trim() }
       });
 
-      if (error) throw error;
+      console.log('Edge function response:', data);
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
       if (data.status === "error") {
         toast({
@@ -45,7 +50,7 @@ const SearchBar = () => {
       if (!floorArea) {
         toast({
           title: "No Data Available",
-          description: "Could not find floor area data for this address",
+          description: "Could not find floor area data for this address. Please ensure you've entered a valid UK address with postcode.",
           variant: "destructive",
         });
         return;
@@ -53,14 +58,14 @@ const SearchBar = () => {
 
       toast({
         title: "Floor Area Details",
-        description: `Total floor area: ${floorArea} m² (${floorAreaSqFt} sq ft)`,
+        description: `Average floor area: ${floorArea} m² (${floorAreaSqFt} sq ft)`,
       });
 
     } catch (error) {
       console.error('Search error:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch floor area data",
+        description: "Failed to fetch floor area data. Please try again with a different address.",
         variant: "destructive",
       });
     } finally {
