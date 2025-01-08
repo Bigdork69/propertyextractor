@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,20 +70,6 @@ serve(async (req) => {
     console.log('Calling PropertyData API URL:', propertyDataUrl);
     
     const response = await fetch(propertyDataUrl);
-    if (!response.ok) {
-      console.error('PropertyData API error:', response.status, response.statusText);
-      return new Response(
-        JSON.stringify({
-          status: 'error',
-          message: `PropertyData API error: ${response.status} ${response.statusText}`
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: response.status
-        }
-      );
-    }
-
     const data = await response.json();
     console.log('PropertyData API response:', data);
 
@@ -98,61 +83,28 @@ serve(async (req) => {
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
-      );
-    }
-
-    // Check if we have actual floor area data
-    if (!data.data || !data.data.length) {
-      console.error('No floor area data available for postcode:', postcode);
-      return new Response(
-        JSON.stringify({
-          status: 'error',
-          message: 'No floor area data available for this postcode'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 404
         }
       );
     }
 
-    // Calculate average floor area
-    const totalFloorArea = data.data.reduce((sum: number, item: any) => sum + item.total_floor_area, 0);
-    const averageFloorArea = totalFloorArea / data.data.length;
-    
-    // Convert to square feet (1 sq m = 10.764 sq ft)
-    const averageFloorAreaSqFt = averageFloorArea * 10.764;
-
-    // Log the search in Supabase
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
-
-    const { error: logError } = await supabase
-      .from('property_search_logs')
-      .insert({
-        search_query: address,
-        response: data,
-      });
-
-    if (logError) {
-      console.error('Error logging search:', logError);
-    }
-
-    const result = {
-      status: 'success',
-      data: {
-        total_floor_area_sq_m: Math.round(averageFloorArea * 100) / 100,
-        total_floor_area_sq_ft: Math.round(averageFloorAreaSqFt * 100) / 100
-      }
-    };
-    console.log('Returning result:', result);
-
+    // Return the successful response
     return new Response(
-      JSON.stringify(result),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        status: 'success',
+        data: {
+          properties: data.data.map((prop: any) => ({
+            address: prop.address,
+            floor_area_sq_ft: Math.round(prop.total_floor_area * 10.764), // Convert m² to ft²
+            habitable_rooms: prop.habitable_rooms || 0,
+            inspection_date: prop.inspection_date || new Date().toISOString(),
+          }))
+        }
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
     );
 
   } catch (error) {
@@ -165,7 +117,7 @@ serve(async (req) => {
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500
       }
     );
   }
