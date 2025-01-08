@@ -38,9 +38,22 @@ const SearchBar = () => {
         return;
       }
 
+      // Format the floor area data for display
+      const floorArea = data.data?.total_floor_area_sq_m;
+      const floorAreaSqFt = data.data?.total_floor_area_sq_ft;
+
+      if (!floorArea) {
+        toast({
+          title: "No Data Available",
+          description: "Could not find floor area data for this address",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Floor Area Details",
-        description: `Total floor area: ${data.total_floor_area_sq_m} sq m`,
+        description: `Total floor area: ${floorArea} m² (${floorAreaSqFt} sq ft)`,
       });
 
     } catch (error) {
@@ -60,7 +73,7 @@ const SearchBar = () => {
       <div className="relative w-full bg-white/95 rounded-full overflow-hidden flex">
         <Input
           type="text"
-          placeholder="Enter address to find floor area..."
+          placeholder="Enter full property address (e.g. 15 Venetia Road, London, W5 4JD)"
           className="pl-12 pr-6 py-6 w-full border-none text-lg"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
