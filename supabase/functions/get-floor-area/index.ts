@@ -14,9 +14,10 @@ serve(async (req) => {
 
   try {
     const { address } = await req.json();
-    console.log('Searching floor area for address:', address);
+    console.log('Received request with address:', address);
 
     if (!address) {
+      console.error('No address provided in request');
       return new Response(
         JSON.stringify({ 
           status: "error", 
@@ -29,19 +30,12 @@ serve(async (req) => {
       );
     }
 
-    // Format address to include London if not present
-    let formattedAddress = address;
-    if (!address.toLowerCase().includes('london')) {
-      formattedAddress = `${address}, London`;
-    }
-
-    const PROPERTY_DATA_API_KEY = Deno.env.get('PROPERTY_DATA_API_KEY');
-    
     // Extract postcode using regex
     const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2})/i;
-    const postcodeMatch = formattedAddress.match(postcodeRegex);
+    const postcodeMatch = address.match(postcodeRegex);
     
     if (!postcodeMatch) {
+      console.error('No valid UK postcode found in address:', address);
       return new Response(
         JSON.stringify({
           status: 'error',
@@ -57,16 +51,46 @@ serve(async (req) => {
     const postcode = postcodeMatch[0].replace(/\s/g, '');
     console.log('Extracted postcode:', postcode);
     
-    // Call PropertyData API with the correct endpoint and parameters
+    const PROPERTY_DATA_API_KEY = Deno.env.get('PROPERTY_DATA_API_KEY');
+    if (!PROPERTY_DATA_API_KEY) {
+      console.error('PropertyData API key not found in environment variables');
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          message: 'API configuration error'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
+    }
+
+    // Call PropertyData API
     const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${postcode}`;
     console.log('Calling PropertyData API URL:', propertyDataUrl);
     
     const response = await fetch(propertyDataUrl);
+    if (!response.ok) {
+      console.error('PropertyData API error:', response.status, response.statusText);
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          message: `PropertyData API error: ${response.status} ${response.statusText}`
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: response.status
+        }
+      );
+    }
+
     const data = await response.json();
     console.log('PropertyData API response:', data);
 
     // Check if the API returned an error
     if (data.status === 'error') {
+      console.error('PropertyData API returned error:', data.message);
       return new Response(
         JSON.stringify({
           status: 'error',
@@ -81,6 +105,7 @@ serve(async (req) => {
 
     // Check if we have actual floor area data
     if (!data.data || !data.data.length) {
+      console.error('No floor area data available for postcode:', postcode);
       return new Response(
         JSON.stringify({
           status: 'error',
@@ -108,7 +133,7 @@ serve(async (req) => {
     const { error: logError } = await supabase
       .from('property_search_logs')
       .insert({
-        search_query: formattedAddress,
+        search_query: address,
         response: data,
       });
 
@@ -116,23 +141,27 @@ serve(async (req) => {
       console.error('Error logging search:', logError);
     }
 
+    const result = {
+      status: 'success',
+      data: {
+        total_floor_area_sq_m: Math.round(averageFloorArea * 100) / 100,
+        total_floor_area_sq_ft: Math.round(averageFloorAreaSqFt * 100) / 100
+      }
+    };
+    console.log('Returning result:', result);
+
     return new Response(
-      JSON.stringify({
-        status: 'success',
-        data: {
-          total_floor_area_sq_m: Math.round(averageFloorArea * 100) / 100,
-          total_floor_area_sq_ft: Math.round(averageFloorAreaSqFt * 100) / 100
-        }
-      }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Unexpected error:', error);
     return new Response(
       JSON.stringify({ 
         status: 'error', 
-        message: 'Failed to fetch floor area data' 
+        message: 'Failed to fetch floor area data',
+        error: error.message 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
