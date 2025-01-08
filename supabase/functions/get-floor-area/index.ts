@@ -11,6 +11,34 @@ const extractPostcode = (input: string): string | null => {
   return match ? match[1].trim() : null;
 };
 
+const normalizeAddress = (address: string, postcode?: string): string => {
+  let normalized = address.toLowerCase()
+    .replace(/[.,]/g, '')  // Remove punctuation
+    .replace(/\s+/g, ' ')  // Normalize spaces
+    .trim();
+  
+  // Remove postcode from address if provided
+  if (postcode) {
+    normalized = normalized.replace(postcode.toLowerCase(), '').trim();
+  }
+  
+  return normalized;
+};
+
+const findExactAddressMatch = (properties: any[], searchAddress: string, postcode: string) => {
+  console.log('Searching for exact address match:', searchAddress);
+  console.log('Available properties:', properties);
+  
+  const normalizedSearch = normalizeAddress(searchAddress, postcode);
+  console.log('Normalized search address:', normalizedSearch);
+  
+  return properties.filter(prop => {
+    const normalizedProp = normalizeAddress(prop.address, postcode);
+    console.log('Comparing with normalized property address:', normalizedProp);
+    return normalizedProp === normalizedSearch;
+  });
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -104,33 +132,14 @@ serve(async (req) => {
 
     console.log('Transformed properties data:', properties);
 
-    // If a full address was provided (not just a postcode), filter for exact matches
+    // Check if this is a postcode-only search
     const isPostcodeOnly = address.trim().toUpperCase() === postcode.trim().toUpperCase();
     
     if (!isPostcodeOnly) {
-      // Remove the postcode from the search address for comparison
-      const searchAddress = address
-        .replace(postcode, '')
-        .toLowerCase()
-        .replace(/[.,]/g, '')
-        .trim();
-      
-      console.log('Searching for exact address match:', searchAddress);
-
-      // Filter for exact address matches (case-insensitive)
-      const exactMatches = properties.filter(prop => {
-        const propAddress = prop.address
-          .toLowerCase()
-          .replace(/[.,]/g, '')
-          .replace(postcode.toLowerCase(), '')
-          .trim();
-        
-        return propAddress === searchAddress;
-      });
-
+      // Look for exact address match
+      const exactMatches = findExactAddressMatch(properties, address, postcode);
       console.log('Found exact matches:', exactMatches.length);
 
-      // Return exact matches if found, otherwise return all properties with a message
       return new Response(
         JSON.stringify({
           status: 'success',
