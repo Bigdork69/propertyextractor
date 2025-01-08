@@ -3,7 +3,7 @@ import { format } from "date-fns";
 
 interface PropertyData {
   address: string;
-  floor_area_sq_ft: number;
+  floor_area_sq_ft: number | null;
   habitable_rooms: number;
   inspection_date: string;
 }
@@ -58,7 +58,9 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
               onClick={() => console.log('Property selected:', property)}
             >
               <TableCell className="font-medium">{property.address}</TableCell>
-              <TableCell className="text-right">{property.floor_area_sq_ft.toLocaleString()}</TableCell>
+              <TableCell className="text-right">
+                {property.floor_area_sq_ft ? property.floor_area_sq_ft.toLocaleString() : 'N/A'}
+              </TableCell>
               <TableCell className="text-right">{property.habitable_rooms}</TableCell>
               <TableCell className="text-right">
                 {format(new Date(property.inspection_date), 'yyyy-MM-dd')}
