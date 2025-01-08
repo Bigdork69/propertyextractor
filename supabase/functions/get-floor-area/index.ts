@@ -70,6 +70,22 @@ serve(async (req) => {
     console.log('Calling PropertyData API URL:', propertyDataUrl);
     
     const response = await fetch(propertyDataUrl);
+    
+    // Check if the API call was successful
+    if (!response.ok) {
+      console.error('PropertyData API error:', response.status, response.statusText);
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          message: `Failed to fetch property data. Please try again later.`
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: response.status
+        }
+      );
+    }
+
     const data = await response.json();
     console.log('PropertyData API response:', data);
 
@@ -80,6 +96,21 @@ serve(async (req) => {
         JSON.stringify({
           status: 'error',
           message: data.message || 'Failed to fetch floor area data'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404
+        }
+      );
+    }
+
+    // Check if we have actual data
+    if (!data.data || data.data.length === 0) {
+      console.log('No floor area data found for postcode:', postcode);
+      return new Response(
+        JSON.stringify({
+          status: 'error',
+          message: 'No floor area data available for this postcode'
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
