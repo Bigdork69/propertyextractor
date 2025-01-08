@@ -73,7 +73,9 @@ serve(async (req) => {
     console.log('Calling PropertyData API URL:', propertyDataUrl);
     
     const response = await fetch(propertyDataUrl);
-    
+    const data = await response.json();
+    console.log('PropertyData API raw response:', data);
+
     // Check if the API call was successful
     if (!response.ok) {
       console.error('PropertyData API error:', response.status, response.statusText);
@@ -89,9 +91,6 @@ serve(async (req) => {
         }
       );
     }
-
-    const data = await response.json();
-    console.log('PropertyData API response:', data);
 
     // Check if the API returned an error
     if (data.status === 'error') {
@@ -109,34 +108,21 @@ serve(async (req) => {
       );
     }
 
-    // Check if we have actual data
-    if (!data.data || data.data.length === 0) {
-      console.log('No floor area data found for postcode:', postcode);
-      return new Response(
-        JSON.stringify({
-          status: 'success',
-          message: 'No floor area data available for this postcode',
-          data: { properties: [] }
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
-        }
-      );
-    }
+    // Transform the data for the frontend
+    const properties = data.data?.map((prop: any) => ({
+      address: prop.address,
+      floor_area_sq_ft: Math.round(prop.total_floor_area * 10.764), // Convert m² to ft²
+      habitable_rooms: prop.habitable_rooms || 0,
+      inspection_date: prop.inspection_date || new Date().toISOString(),
+    })) || [];
+
+    console.log('Transformed properties data:', properties);
 
     // Return the successful response
     return new Response(
       JSON.stringify({
         status: 'success',
-        data: {
-          properties: data.data.map((prop: any) => ({
-            address: prop.address,
-            floor_area_sq_ft: Math.round(prop.total_floor_area * 10.764), // Convert m² to ft²
-            habitable_rooms: prop.habitable_rooms || 0,
-            inspection_date: prop.inspection_date || new Date().toISOString(),
-          }))
-        }
+        data: { properties }
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -149,7 +135,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         status: 'error', 
-        message: 'Failed to fetch floor area data',
+        message: 'An unexpected error occurred',
         error: error.message,
         data: { properties: [] }
       }),

@@ -50,6 +50,8 @@ const SearchBar = () => {
 
     setIsLoading(true);
     try {
+      console.log('Sending request to Edge Function with address:', address);
+      
       const { data: response, error: functionError } = await supabase.functions.invoke('get-floor-area', {
         body: { address: address.trim() }
       });
@@ -71,13 +73,8 @@ const SearchBar = () => {
         return;
       }
 
-      // Transform the data for the table display
-      const transformedData: PropertyData[] = response.data.properties.map((prop: any) => ({
-        address: prop.address,
-        floor_area_sq_ft: prop.floor_area_sq_ft,
-        habitable_rooms: prop.habitable_rooms || 0,
-        inspection_date: prop.inspection_date || new Date().toISOString(),
-      }));
+      const transformedData = response.data.properties;
+      console.log('Transformed data:', transformedData);
 
       setPropertyData(transformedData);
 
