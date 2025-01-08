@@ -108,10 +108,10 @@ serve(async (req) => {
       );
     }
 
-    // Transform the data for the frontend, using known_floor_areas field
+    // Transform the data for the frontend, using square_feet field directly
     const properties = data.known_floor_areas?.map((prop: any) => ({
       address: prop.address,
-      floor_area_sq_ft: Math.round(prop.total_floor_area * 10.764), // Convert m² to ft²
+      floor_area_sq_ft: prop.square_feet || null, // Use square_feet directly instead of converting
       habitable_rooms: prop.habitable_rooms || 0,
       inspection_date: prop.inspection_date || new Date().toISOString(),
     })) || [];
