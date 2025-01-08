@@ -29,13 +29,9 @@ serve(async (req) => {
       );
     }
 
-    // Extract postcode using regex
-    const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2})/i;
-    const postcodeMatch = address.match(postcodeRegex);
-    const isPostcode = postcodeMatch && postcodeMatch[0] === address.trim();
-    
-    const searchTerm = isPostcode ? postcodeMatch[0].replace(/\s/g, '') : address.trim();
-    console.log('Search term:', searchTerm, 'Is postcode:', isPostcode);
+    // Clean up the postcode
+    const postcode = address.trim().replace(/\s+/g, '');
+    console.log('Cleaned postcode for API request:', postcode);
     
     const PROPERTY_DATA_API_KEY = Deno.env.get('PROPERTY_DATA_API_KEY');
     if (!PROPERTY_DATA_API_KEY) {
@@ -54,7 +50,7 @@ serve(async (req) => {
     }
 
     // Call PropertyData API
-    const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${searchTerm}`;
+    const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${postcode}`;
     console.log('Calling PropertyData API URL:', propertyDataUrl);
     
     const response = await fetch(propertyDataUrl);
@@ -91,38 +87,14 @@ serve(async (req) => {
       );
     }
 
-    let properties = data.known_floor_areas?.map((prop: any) => ({
+    const properties = data.known_floor_areas?.map((prop: any) => ({
       address: prop.address,
       floor_area_sq_ft: prop.square_feet || null,
       habitable_rooms: prop.habitable_rooms || 0,
       inspection_date: prop.inspection_date || new Date().toISOString(),
     })) || [];
 
-    // If searching by exact address, filter the results
-    if (!isPostcode) {
-      const normalizedSearchAddress = searchTerm.toLowerCase().replace(/\s+/g, ' ');
-      properties = properties.filter(prop => 
-        prop.address.toLowerCase().replace(/\s+/g, ' ') === normalizedSearchAddress
-      );
-    }
-
     console.log('Transformed properties data:', properties);
-
-    if (properties.length === 0) {
-      return new Response(
-        JSON.stringify({
-          status: 'success',
-          message: isPostcode 
-            ? 'No properties found for this postcode' 
-            : 'No property found with this exact address',
-          data: { properties: [] }
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
-        }
-      );
-    }
 
     return new Response(
       JSON.stringify({

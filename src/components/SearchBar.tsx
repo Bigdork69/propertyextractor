@@ -19,6 +19,7 @@ const SearchBar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [propertyData, setPropertyData] = useState<PropertyData[] | null>(null);
+  const [showingAllPostcodeResults, setShowingAllPostcodeResults] = useState(false);
   const { toast } = useToast();
 
   const validatePostcode = (postcode: string) => {
@@ -26,8 +27,17 @@ const SearchBar = () => {
     return postcodeRegex.test(postcode.trim());
   };
 
-  const isExactAddress = (input: string) => {
-    return !validatePostcode(input) && input.trim().length > 0;
+  const extractPostcode = (input: string) => {
+    const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2})/i;
+    const match = input.match(postcodeRegex);
+    return match ? match[1] : null;
+  };
+
+  const normalizeAddress = (addr: string) => {
+    return addr.toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[.,]/g, '')
+      .trim();
   };
 
   const handleExportToExcel = () => {
@@ -59,23 +69,26 @@ const SearchBar = () => {
     e.preventDefault();
     setError(null);
     setPropertyData(null);
+    setShowingAllPostcodeResults(false);
 
-    if (!address.trim()) {
+    const trimmedAddress = address.trim();
+    if (!trimmedAddress) {
       toast({
         title: "Error",
-        description: "Please enter a valid UK postcode or exact address",
+        description: "Please enter a valid UK postcode or address",
         variant: "destructive",
       });
       return;
     }
 
-    const isPostcode = validatePostcode(address);
-    const isAddress = isExactAddress(address);
-
-    if (!isPostcode && !isAddress) {
+    // Extract postcode from input if it's a full address, or use the input directly if it's just a postcode
+    const postcode = extractPostcode(trimmedAddress);
+    const isPostcodeOnly = validatePostcode(trimmedAddress);
+    
+    if (!postcode) {
       toast({
         title: "Invalid Input",
-        description: "Please enter either a valid UK postcode or a complete address",
+        description: "Please include a valid UK postcode in the address",
         variant: "destructive",
       });
       return;
@@ -83,10 +96,10 @@ const SearchBar = () => {
 
     setIsLoading(true);
     try {
-      console.log('Sending request to Edge Function with address:', address);
+      console.log('Sending request to Edge Function with postcode:', postcode);
       
       const { data: response, error: functionError } = await supabase.functions.invoke('get-floor-area', {
-        body: { address: address.trim() }
+        body: { address: postcode }
       });
 
       console.log('Edge function response:', response);
@@ -106,17 +119,34 @@ const SearchBar = () => {
         return;
       }
 
-      const transformedData = response.data.properties;
-      console.log('Transformed data:', transformedData);
+      let transformedData = response.data.properties;
+      console.log('Transformed data before filtering:', transformedData);
 
+      // If it's not just a postcode, filter for exact address match
+      if (!isPostcodeOnly) {
+        const normalizedSearchAddress = normalizeAddress(trimmedAddress);
+        const filteredData = transformedData.filter(prop => 
+          normalizeAddress(prop.address).includes(normalizedSearchAddress.replace(postcode, '').trim())
+        );
+
+        if (filteredData.length === 0) {
+          setShowingAllPostcodeResults(true);
+          toast({
+            title: "No Exact Match Found",
+            description: "No data found for this exact address. Showing all properties in the postcode area instead.",
+          });
+        } else {
+          transformedData = filteredData;
+        }
+      }
+
+      console.log('Final filtered data:', transformedData);
       setPropertyData(transformedData);
 
       if (transformedData.length === 0) {
         toast({
           title: "No Data Available",
-          description: isPostcode 
-            ? "No floor area data found for this postcode. Please try another one."
-            : "No property found with this exact address. Please verify the address and try again.",
+          description: "No floor area data found for this location. Please try another address or postcode.",
         });
       }
 
@@ -139,7 +169,7 @@ const SearchBar = () => {
         <div className="relative w-full bg-white/95 rounded-full overflow-hidden flex shadow-lg">
           <Input
             type="text"
-            placeholder="Enter a postcode (e.g., W14 9JH) or exact address"
+            placeholder="Enter a postcode (e.g., W14 9JH) or exact address with postcode"
             className="pl-12 pr-6 py-6 w-full border-none text-lg"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -155,6 +185,12 @@ const SearchBar = () => {
           </Button>
         </div>
       </form>
+
+      {showingAllPostcodeResults && propertyData && propertyData.length > 0 && (
+        <div className="mt-4 text-estate-600 text-center">
+          Showing all properties in the postcode area
+        </div>
+      )}
 
       {propertyData && propertyData.length > 0 && (
         <div className="mt-4 flex justify-end">
