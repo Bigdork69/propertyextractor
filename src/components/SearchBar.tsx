@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PropertyDataResults from "./PropertyDataResults";
+import * as XLSX from 'xlsx';
 
 interface PropertyData {
   address: string;
@@ -25,6 +26,35 @@ const SearchBar = () => {
     return postcodeRegex.test(postcode.trim());
   };
 
+  const isExactAddress = (input: string) => {
+    return !validatePostcode(input) && input.trim().length > 0;
+  };
+
+  const handleExportToExcel = () => {
+    if (!propertyData || propertyData.length === 0) {
+      toast({
+        title: "No Data to Export",
+        description: "There is no data available to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(propertyData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Property Data");
+
+    const searchTerm = address.trim().replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `property_data_${searchTerm}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
+    
+    toast({
+      title: "Export Successful",
+      description: `Data has been exported to ${fileName}`,
+    });
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -33,16 +63,19 @@ const SearchBar = () => {
     if (!address.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a valid UK postcode",
+        description: "Please enter a valid UK postcode or exact address",
         variant: "destructive",
       });
       return;
     }
 
-    if (!validatePostcode(address)) {
+    const isPostcode = validatePostcode(address);
+    const isAddress = isExactAddress(address);
+
+    if (!isPostcode && !isAddress) {
       toast({
-        title: "Invalid Postcode",
-        description: "Please enter a valid UK postcode format (e.g., W14 9JH)",
+        title: "Invalid Input",
+        description: "Please enter either a valid UK postcode or a complete address",
         variant: "destructive",
       });
       return;
@@ -81,7 +114,9 @@ const SearchBar = () => {
       if (transformedData.length === 0) {
         toast({
           title: "No Data Available",
-          description: "No floor area data found for this postcode. Please try another one.",
+          description: isPostcode 
+            ? "No floor area data found for this postcode. Please try another one."
+            : "No property found with this exact address. Please verify the address and try again.",
         });
       }
 
@@ -104,7 +139,7 @@ const SearchBar = () => {
         <div className="relative w-full bg-white/95 rounded-full overflow-hidden flex shadow-lg">
           <Input
             type="text"
-            placeholder="Enter a postcode (e.g., W14 9JH)"
+            placeholder="Enter a postcode (e.g., W14 9JH) or exact address"
             className="pl-12 pr-6 py-6 w-full border-none text-lg"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -120,6 +155,17 @@ const SearchBar = () => {
           </Button>
         </div>
       </form>
+
+      {propertyData && propertyData.length > 0 && (
+        <div className="mt-4 flex justify-end">
+          <Button
+            onClick={handleExportToExcel}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            Export to Excel
+          </Button>
+        </div>
+      )}
 
       <PropertyDataResults 
         data={propertyData}

@@ -6,7 +6,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -33,24 +32,10 @@ serve(async (req) => {
     // Extract postcode using regex
     const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2})/i;
     const postcodeMatch = address.match(postcodeRegex);
+    const isPostcode = postcodeMatch && postcodeMatch[0] === address.trim();
     
-    if (!postcodeMatch) {
-      console.error('No valid UK postcode found in address:', address);
-      return new Response(
-        JSON.stringify({
-          status: 'error',
-          message: 'No valid UK postcode found in the address',
-          data: { properties: [] }
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
-        }
-      );
-    }
-
-    const postcode = postcodeMatch[0].replace(/\s/g, '');
-    console.log('Extracted postcode:', postcode);
+    const searchTerm = isPostcode ? postcodeMatch[0].replace(/\s/g, '') : address.trim();
+    console.log('Search term:', searchTerm, 'Is postcode:', isPostcode);
     
     const PROPERTY_DATA_API_KEY = Deno.env.get('PROPERTY_DATA_API_KEY');
     if (!PROPERTY_DATA_API_KEY) {
@@ -69,14 +54,13 @@ serve(async (req) => {
     }
 
     // Call PropertyData API
-    const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${postcode}`;
+    const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${searchTerm}`;
     console.log('Calling PropertyData API URL:', propertyDataUrl);
     
     const response = await fetch(propertyDataUrl);
     const data = await response.json();
     console.log('PropertyData API raw response:', data);
 
-    // Check if the API call was successful
     if (!response.ok) {
       console.error('PropertyData API error:', response.status, response.statusText);
       return new Response(
@@ -92,7 +76,6 @@ serve(async (req) => {
       );
     }
 
-    // Check if the API returned an error
     if (data.status === 'error') {
       console.error('PropertyData API returned error:', data.message);
       return new Response(
@@ -108,17 +91,39 @@ serve(async (req) => {
       );
     }
 
-    // Transform the data for the frontend, using square_feet field directly
-    const properties = data.known_floor_areas?.map((prop: any) => ({
+    let properties = data.known_floor_areas?.map((prop: any) => ({
       address: prop.address,
-      floor_area_sq_ft: prop.square_feet || null, // Use square_feet directly instead of converting
+      floor_area_sq_ft: prop.square_feet || null,
       habitable_rooms: prop.habitable_rooms || 0,
       inspection_date: prop.inspection_date || new Date().toISOString(),
     })) || [];
 
+    // If searching by exact address, filter the results
+    if (!isPostcode) {
+      const normalizedSearchAddress = searchTerm.toLowerCase().replace(/\s+/g, ' ');
+      properties = properties.filter(prop => 
+        prop.address.toLowerCase().replace(/\s+/g, ' ') === normalizedSearchAddress
+      );
+    }
+
     console.log('Transformed properties data:', properties);
 
-    // Return the successful response
+    if (properties.length === 0) {
+      return new Response(
+        JSON.stringify({
+          status: 'success',
+          message: isPostcode 
+            ? 'No properties found for this postcode' 
+            : 'No property found with this exact address',
+          data: { properties: [] }
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      );
+    }
+
     return new Response(
       JSON.stringify({
         status: 'success',
