@@ -6,10 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PropertyDataResults from "./PropertyDataResults";
 import * as XLSX from 'xlsx';
+import { convertToSquareMeters } from "@/utils/propertyUtils";
 
 interface PropertyData {
   address: string;
-  floor_area_sq_ft: number;
+  floor_area_sq_ft: number | null;
+  floor_area_sq_m: number | null;
   habitable_rooms: number;
   inspection_date: string;
 }
@@ -81,7 +83,6 @@ const SearchBar = () => {
       return;
     }
 
-    // Extract postcode from input if it's a full address, or use the input directly if it's just a postcode
     const postcode = extractPostcode(trimmedAddress);
     const isPostcodeOnly = validatePostcode(trimmedAddress);
     
@@ -119,10 +120,13 @@ const SearchBar = () => {
         return;
       }
 
-      let transformedData = response.data.properties;
+      let transformedData = response.data.properties.map((prop: any) => ({
+        ...prop,
+        floor_area_sq_m: convertToSquareMeters(prop.floor_area_sq_ft)
+      }));
+
       console.log('Transformed data before filtering:', transformedData);
 
-      // If it's not just a postcode, filter for exact address match
       if (!isPostcodeOnly) {
         const normalizedSearchAddress = normalizeAddress(trimmedAddress);
         const filteredData = transformedData.filter(prop => 
