@@ -76,35 +76,35 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
   const sortedData = getSortedData();
 
   return (
-    <div className="w-full mt-8 px-4 md:px-8">
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="w-full mt-8">
+      <div className="max-w-[1200px] mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-[#2D2D3A] sticky top-0">
               <TableRow className="hover:bg-[#2D2D3A]/90 transition-colors">
                 <TableHead 
-                  className="text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors"
+                  className="text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('address')}
                 >
                   Address
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors"
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('floor_area_sq_ft')}
                 >
                   Floor Area (Square Feet)
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors"
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('habitable_rooms')}
                 >
                   Habitable Rooms
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors"
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('inspection_date')}
                 >
                   Inspection Date
@@ -122,12 +122,12 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                     ${index % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}
                   `}
                 >
-                  <TableCell className="font-medium text-gray-900">{property.address}</TableCell>
-                  <TableCell className="text-right text-gray-700">
+                  <TableCell className="font-medium text-gray-900 whitespace-nowrap">{property.address}</TableCell>
+                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
                     {property.floor_area_sq_ft ? property.floor_area_sq_ft.toLocaleString() : 'N/A'}
                   </TableCell>
-                  <TableCell className="text-right text-gray-700">{property.habitable_rooms}</TableCell>
-                  <TableCell className="text-right text-gray-700">
+                  <TableCell className="text-right text-gray-700 whitespace-nowrap">{property.habitable_rooms}</TableCell>
+                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
                     {format(new Date(property.inspection_date), 'yyyy-MM-dd')}
                   </TableCell>
                 </TableRow>
