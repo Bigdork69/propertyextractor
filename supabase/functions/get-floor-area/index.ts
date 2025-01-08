@@ -16,6 +16,9 @@ const normalizeAddress = (address: string): string => {
     .toLowerCase()                // Convert to lowercase
     .replace(/[.,]/g, '')         // Remove punctuation
     .replace(/\s+/g, ' ')         // Replace multiple spaces with a single space
+    .replace(/flat/i, '')         // Remove 'flat' variations
+    .replace(/(ground|first|second|third|fourth|fifth|top|basement)\s+floor/i, '') // Remove floor descriptions
+    .replace(/(left|right)/i, '') // Remove left/right descriptions
     .trim();                      // Trim leading/trailing spaces
 };
 
@@ -26,7 +29,7 @@ serve(async (req) => {
 
   try {
     const { address } = await req.json();
-    console.log('Received request with address:', address);
+    console.log('Raw input address:', address);
 
     if (!address) {
       console.error('No address provided in request');
@@ -43,7 +46,6 @@ serve(async (req) => {
       );
     }
 
-    // Extract postcode from the full address
     const postcode = extractPostcode(address);
     console.log('Extracted postcode:', postcode);
 
@@ -78,7 +80,6 @@ serve(async (req) => {
       );
     }
 
-    // Call PropertyData API with the extracted postcode
     const cleanPostcode = postcode.replace(/\s+/g, '');
     const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${cleanPostcode}`;
     console.log('Calling PropertyData API URL:', propertyDataUrl);
@@ -102,7 +103,6 @@ serve(async (req) => {
       );
     }
 
-    // Transform and normalize the property data
     const properties = data.known_floor_areas?.map((prop: any) => ({
       address: prop.address,
       floor_area_sq_ft: prop.square_feet || null,
@@ -112,22 +112,24 @@ serve(async (req) => {
 
     console.log('Transformed properties data:', properties);
 
-    // Check if this is a postcode-only search
     const isPostcodeOnly = address.trim().toUpperCase() === postcode.trim().toUpperCase();
     
     if (!isPostcodeOnly) {
-      // Normalize the input address
-      const normalizedSearchAddress = normalizeAddress(address.replace(postcode, '').trim());
+      const searchAddressWithoutPostcode = address.replace(postcode, '').trim();
+      const normalizedSearchAddress = normalizeAddress(searchAddressWithoutPostcode);
       console.log('Normalized search address:', normalizedSearchAddress);
 
-      // Filter for exact address matches (case-insensitive, normalized)
       const exactMatches = properties.filter((prop) => {
-        const normalizedPropertyAddress = normalizeAddress(prop.address.replace(postcode, '').trim());
-        console.log('Comparing:', normalizedPropertyAddress, 'with:', normalizedSearchAddress);
-        return normalizedPropertyAddress === normalizedSearchAddress;
+        const normalizedPropertyAddress = normalizeAddress(prop.address);
+        console.log(`Comparing addresses:
+          Property: "${normalizedPropertyAddress}"
+          Search:   "${normalizedSearchAddress}"
+          Match:    ${normalizedPropertyAddress.includes(normalizedSearchAddress)}`);
+        return normalizedPropertyAddress.includes(normalizedSearchAddress);
       });
 
       console.log('Exact matches found:', exactMatches.length);
+      console.log('Exact matches:', exactMatches);
 
       return new Response(
         JSON.stringify({
@@ -144,7 +146,6 @@ serve(async (req) => {
       );
     }
 
-    // Return all properties for postcode-only searches
     return new Response(
       JSON.stringify({
         status: 'success',
