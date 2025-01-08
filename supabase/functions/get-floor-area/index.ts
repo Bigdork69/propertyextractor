@@ -20,11 +20,12 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           status: "error", 
-          message: "Address is required" 
+          message: "Address is required",
+          data: { properties: [] }
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
+          status: 200 
         }
       );
     }
@@ -38,11 +39,12 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           status: 'error',
-          message: 'No valid UK postcode found in the address'
+          message: 'No valid UK postcode found in the address',
+          data: { properties: [] }
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
+          status: 200
         }
       );
     }
@@ -56,11 +58,12 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           status: 'error',
-          message: 'API configuration error'
+          message: 'API configuration error',
+          data: { properties: [] }
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
+          status: 200
         }
       );
     }
@@ -77,11 +80,12 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           status: 'error',
-          message: `Failed to fetch property data. Please try again later.`
+          message: `Failed to fetch property data. Please try again later.`,
+          data: { properties: [] }
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: response.status
+          status: 200
         }
       );
     }
@@ -95,11 +99,12 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           status: 'error',
-          message: data.message || 'Failed to fetch floor area data'
+          message: data.message || 'Failed to fetch floor area data',
+          data: { properties: [] }
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404
+          status: 200
         }
       );
     }
@@ -109,12 +114,13 @@ serve(async (req) => {
       console.log('No floor area data found for postcode:', postcode);
       return new Response(
         JSON.stringify({
-          status: 'error',
-          message: 'No floor area data available for this postcode'
+          status: 'success',
+          message: 'No floor area data available for this postcode',
+          data: { properties: [] }
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404
+          status: 200
         }
       );
     }
@@ -144,11 +150,12 @@ serve(async (req) => {
       JSON.stringify({ 
         status: 'error', 
         message: 'Failed to fetch floor area data',
-        error: error.message 
+        error: error.message,
+        data: { properties: [] }
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 200
       }
     );
   }
