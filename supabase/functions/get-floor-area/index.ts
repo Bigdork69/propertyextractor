@@ -11,32 +11,12 @@ const extractPostcode = (input: string): string | null => {
   return match ? match[1].trim() : null;
 };
 
-const normalizeAddress = (address: string, postcode?: string): string => {
-  let normalized = address.toLowerCase()
-    .replace(/[.,]/g, '')  // Remove punctuation
-    .replace(/\s+/g, ' ')  // Normalize spaces
-    .trim();
-  
-  // Remove postcode from address if provided
-  if (postcode) {
-    normalized = normalized.replace(postcode.toLowerCase(), '').trim();
-  }
-  
-  return normalized;
-};
-
-const findExactAddressMatch = (properties: any[], searchAddress: string, postcode: string) => {
-  console.log('Searching for exact address match:', searchAddress);
-  console.log('Available properties:', properties);
-  
-  const normalizedSearch = normalizeAddress(searchAddress, postcode);
-  console.log('Normalized search address:', normalizedSearch);
-  
-  return properties.filter(prop => {
-    const normalizedProp = normalizeAddress(prop.address, postcode);
-    console.log('Comparing with normalized property address:', normalizedProp);
-    return normalizedProp === normalizedSearch;
-  });
+const normalizeAddress = (address: string): string => {
+  return address
+    .toLowerCase()                // Convert to lowercase
+    .replace(/[.,]/g, '')         // Remove punctuation
+    .replace(/\s+/g, ' ')         // Replace multiple spaces with a single space
+    .trim();                      // Trim leading/trailing spaces
 };
 
 serve(async (req) => {
@@ -136,17 +116,26 @@ serve(async (req) => {
     const isPostcodeOnly = address.trim().toUpperCase() === postcode.trim().toUpperCase();
     
     if (!isPostcodeOnly) {
-      // Look for exact address match
-      const exactMatches = findExactAddressMatch(properties, address, postcode);
-      console.log('Found exact matches:', exactMatches.length);
+      // Normalize the input address
+      const normalizedSearchAddress = normalizeAddress(address.replace(postcode, '').trim());
+      console.log('Normalized search address:', normalizedSearchAddress);
+
+      // Filter for exact address matches (case-insensitive, normalized)
+      const exactMatches = properties.filter((prop) => {
+        const normalizedPropertyAddress = normalizeAddress(prop.address.replace(postcode, '').trim());
+        console.log('Comparing:', normalizedPropertyAddress, 'with:', normalizedSearchAddress);
+        return normalizedPropertyAddress === normalizedSearchAddress;
+      });
+
+      console.log('Exact matches found:', exactMatches.length);
 
       return new Response(
         JSON.stringify({
           status: 'success',
-          message: exactMatches.length === 0 ? 'No exact address match found. Showing all properties in the postcode area.' : undefined,
-          data: { 
-            properties: exactMatches.length > 0 ? exactMatches : properties
-          }
+          message: exactMatches.length === 0 
+            ? 'No exact address match found. Showing all properties in the postcode area.' 
+            : undefined,
+          data: { properties: exactMatches.length > 0 ? exactMatches : properties }
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
