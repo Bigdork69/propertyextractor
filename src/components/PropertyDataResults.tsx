@@ -51,7 +51,7 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-8">
+      <div className="flex justify-center items-center py-8 mt-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-estate-800"></div>
       </div>
     );
@@ -59,7 +59,7 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
 
   if (error) {
     return (
-      <div className="text-center py-8 text-estate-600">
+      <div className="text-center py-8 mt-8 text-estate-600">
         <p>{error}</p>
       </div>
     );
@@ -67,7 +67,7 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-center py-8 text-estate-600">
+      <div className="text-center py-8 mt-8 text-estate-600">
         <p>No floor area data is available for the provided postcode. Please try another one.</p>
       </div>
     );
@@ -76,35 +76,35 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
   const sortedData = getSortedData();
 
   return (
-    <div className="w-full mt-32 px-4 md:px-8">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+    <div className="w-full mt-8 px-4 md:px-8">
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-estate-100 sticky top-0">
-              <TableRow>
+            <TableHeader className="bg-[#2D2D3A] sticky top-0">
+              <TableRow className="hover:bg-[#2D2D3A]/90 transition-colors">
                 <TableHead 
-                  className="text-estate-800 font-semibold cursor-pointer hover:bg-estate-200 transition-colors"
+                  className="text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors"
                   onClick={() => sortData('address')}
                 >
                   Address
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
-                  className="text-right text-estate-800 font-semibold cursor-pointer hover:bg-estate-200 transition-colors"
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors"
                   onClick={() => sortData('floor_area_sq_ft')}
                 >
                   Floor Area (Square Feet)
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
-                  className="text-right text-estate-800 font-semibold cursor-pointer hover:bg-estate-200 transition-colors"
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors"
                   onClick={() => sortData('habitable_rooms')}
                 >
                   Habitable Rooms
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
-                  className="text-right text-estate-800 font-semibold cursor-pointer hover:bg-estate-200 transition-colors"
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors"
                   onClick={() => sortData('inspection_date')}
                 >
                   Inspection Date
@@ -118,18 +118,16 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                   key={`${property.address}-${index}`}
                   className={`
                     cursor-pointer 
-                    hover:bg-estate-50 
                     transition-colors
-                    ${index % 2 === 0 ? 'bg-white' : 'bg-estate-100/30'}
+                    ${index % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}
                   `}
-                  onClick={() => console.log('Property selected:', property)}
                 >
-                  <TableCell className="font-medium text-estate-800">{property.address}</TableCell>
-                  <TableCell className="text-right text-estate-700">
+                  <TableCell className="font-medium text-gray-900">{property.address}</TableCell>
+                  <TableCell className="text-right text-gray-700">
                     {property.floor_area_sq_ft ? property.floor_area_sq_ft.toLocaleString() : 'N/A'}
                   </TableCell>
-                  <TableCell className="text-right text-estate-700">{property.habitable_rooms}</TableCell>
-                  <TableCell className="text-right text-estate-700">
+                  <TableCell className="text-right text-gray-700">{property.habitable_rooms}</TableCell>
+                  <TableCell className="text-right text-gray-700">
                     {format(new Date(property.inspection_date), 'yyyy-MM-dd')}
                   </TableCell>
                 </TableRow>
