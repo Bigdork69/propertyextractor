@@ -1,1 +1,2 @@
-project_id = "mmuxdhhfqryxgrhekqkd"
+[functions.get-floor-area]
+verify_jwt = false
