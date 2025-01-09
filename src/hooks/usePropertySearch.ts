@@ -43,13 +43,17 @@ export const usePropertySearch = () => {
 
     setIsLoading(true);
     try {
-      console.log('Sending request to Edge Function with postcode:', postcode);
+      console.log('Search initiated with:', {
+        fullAddress: trimmedAddress,
+        postcode,
+        isPostcodeOnly
+      });
       
       const { data: response, error: functionError } = await supabase.functions.invoke('get-floor-area', {
         body: { address: postcode }
       });
 
-      console.log('Edge function response:', response);
+      console.log('API Response:', response);
 
       if (functionError) {
         console.error('Supabase function error:', functionError);
@@ -73,17 +77,39 @@ export const usePropertySearch = () => {
 
       if (!isPostcodeOnly) {
         const normalizedSearchAddress = normalizeAddress(trimmedAddress);
-        const filteredData = transformedData.filter(prop => 
-          normalizeAddress(prop.address).includes(normalizedSearchAddress.replace(postcode, '').trim())
-        );
+        console.log('Normalized search address:', normalizedSearchAddress);
+        
+        console.log('Available properties for matching:');
+        transformedData.forEach((prop: any) => {
+          const normalizedPropAddress = normalizeAddress(prop.address);
+          console.log(`Property: "${prop.address}"
+            Normalized: "${normalizedPropAddress}"
+            Exact Match: ${normalizedPropAddress === normalizedSearchAddress}`);
+        });
+
+        const filteredData = transformedData.filter(prop => {
+          const normalizedPropAddress = normalizeAddress(prop.address);
+          const isMatch = normalizedPropAddress === normalizedSearchAddress;
+          
+          if (isMatch) {
+            console.log('Found exact match:', {
+              original: prop.address,
+              normalized: normalizedPropAddress,
+              searchNormalized: normalizedSearchAddress
+            });
+          }
+          
+          return isMatch;
+        });
 
         if (filteredData.length === 0) {
-          setPropertyData(null); // Show no results instead of all properties
+          console.log('No exact matches found for:', normalizedSearchAddress);
+          setPropertyData(null);
           toast({
             title: "No Exact Match Found",
             description: "No data found for this exact address.",
           });
-          return; // Exit early without showing any results
+          return;
         } else {
           transformedData = filteredData;
         }

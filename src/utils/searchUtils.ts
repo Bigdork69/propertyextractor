@@ -10,7 +10,8 @@ export const extractPostcode = (input: string) => {
 };
 
 export const normalizeAddress = (addr: string) => {
-  return addr.toLowerCase()
+  const original = addr;
+  const normalized = addr.toLowerCase()
     .replace(/\s+/g, ' ')           // Replace multiple spaces with single space
     .replace(/[.,]/g, '')           // Remove periods and commas
     .replace(/\b(flat|apartment)\b/i, '')  // Remove flat/apartment
@@ -20,4 +21,14 @@ export const normalizeAddress = (addr: string) => {
     .replace(/([0-9])([a-z])/i, '$1 $2') // Add space between number and letter
     .replace(/\s+/g, ' ')           // Clean up any double spaces created
     .trim();                        // Remove leading/trailing spaces
+
+  console.log(`Address Normalization:
+    Original: "${original}"
+    Normalized: "${normalized}"
+    Steps:
+    1. Lowercase: "${addr.toLowerCase()}"
+    2. After punctuation removal: "${addr.toLowerCase().replace(/[.,]/g, '')}"
+    3. After space normalization: "${normalized}"`);
+
+  return normalized;
 };
