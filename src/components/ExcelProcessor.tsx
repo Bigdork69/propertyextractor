@@ -9,8 +9,10 @@ import {
 import ExcelUploader from "./excel/ExcelUploader";
 import PreviewTable from "./excel/PreviewTable";
 import { useExcelProcessor } from "@/hooks/useExcelProcessor";
+import { useToast } from "@/hooks/use-toast";
 
 const ExcelProcessor = () => {
+  const { toast } = useToast();
   const {
     isProcessing,
     previewData,
