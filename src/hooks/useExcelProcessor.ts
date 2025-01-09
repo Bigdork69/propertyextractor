@@ -71,7 +71,7 @@ export const useExcelProcessor = () => {
     }
   };
 
-  const findBestMatch = (propertyList: any[], searchAddress: string, searchPostcode: string) => {
+  const findBestMatch = (propertyList: any[], searchAddress: string) => {
     // Normalize the search address
     const normalizedSearch = searchAddress.toLowerCase().replace(/\s+/g, ' ').trim();
     
@@ -92,7 +92,6 @@ export const useExcelProcessor = () => {
 
     console.log('Address matching result:', {
       searchAddress: normalizedSearch,
-      searchPostcode,
       found: !!match,
       matchedAddress: match?.address
     });
@@ -114,28 +113,29 @@ export const useExcelProcessor = () => {
       }
 
       try {
-        console.log('Processing address:', row.address, 'with postcode:', row.postcode);
+        // Combine address and postcode properly
+        const fullAddress = `${row.address}, ${row.postcode}`.trim();
+        console.log('Processing full address:', fullAddress);
         
         const { data: response, error: functionError } = await supabase.functions.invoke('get-floor-area', {
           body: { 
-            address: row.address,
-            postcode: row.postcode 
+            address: fullAddress
           }
         });
 
         if (functionError) {
           console.error('Supabase function error:', functionError);
-          errors.push(`Error fetching data for ${row.address}: ${functionError.message}`);
+          errors.push(`Error fetching data for ${fullAddress}: ${functionError.message}`);
           continue;
         }
 
         if (response.status === "error") {
           console.error('API response error:', response);
-          errors.push(`Error: ${response.message} for address: ${row.address}`);
+          errors.push(`Error: ${response.message} for address: ${fullAddress}`);
           continue;
         }
 
-        const propertyData = findBestMatch(response.data.properties, row.address, row.postcode);
+        const propertyData = findBestMatch(response.data.properties, fullAddress);
 
         if (propertyData) {
           processedData.push({
@@ -147,7 +147,7 @@ export const useExcelProcessor = () => {
             inspection_date: propertyData.inspection_date
           });
         } else {
-          const error = `No matching property found for address: ${row.address}`;
+          const error = `No matching property found for address: ${fullAddress}`;
           console.error(error);
           errors.push(error);
         }
