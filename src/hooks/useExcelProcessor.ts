@@ -14,17 +14,61 @@ export const useExcelProcessor = () => {
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const { toast } = useToast();
 
+  const normalizeAddress = (address: string): string => {
+    return address
+      .toLowerCase()
+      .replace(/[.,]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .replace(/^(flat|apartment|apt|unit)\s*(\d+)/i, 'flat $2') // Normalize flat numbers
+      .replace(/(\d+)[a-z]?\s*(st|nd|rd|th)\s+floor/i, '$1 floor') // Normalize floor numbers
+      .replace(/\b(ground|first|second|third|fourth|fifth)\s+floor\b/i, '') // Remove floor descriptions
+      .replace(/\b(basement|lower)\s+floor\b/i, '') // Remove basement descriptions
+      .trim();
+  };
+
+  const findBestMatch = (propertyList: any[], searchAddress: string) => {
+    console.log('Finding best match for:', searchAddress);
+    const normalizedSearch = normalizeAddress(searchAddress);
+    
+    // Try exact match first
+    let match = propertyList.find(prop => 
+      normalizeAddress(prop.address) === normalizedSearch
+    );
+
+    if (match) {
+      console.log('Found exact match:', match.address);
+      return match;
+    }
+
+    // Try partial match if no exact match found
+    match = propertyList.find(prop => {
+      const normalizedProp = normalizeAddress(prop.address);
+      const searchParts = normalizedSearch.split(' ').filter(part => 
+        !['flat', 'apartment', 'unit'].includes(part)
+      );
+      
+      // Check if all significant parts of the search address are in the property address
+      return searchParts.every(part => normalizedProp.includes(part));
+    });
+
+    if (match) {
+      console.log('Found partial match:', match.address);
+    } else {
+      console.log('No match found for address:', searchAddress);
+    }
+
+    return match;
+  };
+
   const generatePreview = (worksheet: XLSX.WorkSheet) => {
     const jsonData = XLSX.utils.sheet_to_json(worksheet);
     const preview: PreviewData[] = [];
 
     for (const row of jsonData) {
       const rowData = row as any;
-      // Check for various possible column names
       const address = rowData['Address'] || rowData['ADDRESS'] || rowData['address'] || '';
       const postcode = rowData['Post Code'] || rowData['POST CODE'] || rowData['Postcode'] || rowData['POSTCODE'] || rowData['postcode'] || '';
       
-      // Skip empty rows
       if (!address && !postcode) continue;
       
       const validation = validateRow(address, postcode);
@@ -71,34 +115,6 @@ export const useExcelProcessor = () => {
     }
   };
 
-  const findBestMatch = (propertyList: any[], searchAddress: string) => {
-    // Normalize the search address
-    const normalizedSearch = searchAddress.toLowerCase().replace(/\s+/g, ' ').trim();
-    
-    // First try exact match
-    let match = propertyList.find(prop => 
-      prop.address.toLowerCase() === normalizedSearch
-    );
-
-    // If no exact match, try fuzzy match
-    if (!match) {
-      match = propertyList.find(prop => {
-        const propAddress = prop.address.toLowerCase();
-        // Check if the main parts of the address match
-        const addressParts = normalizedSearch.split(',').map(part => part.trim());
-        return addressParts.every(part => propAddress.includes(part.toLowerCase()));
-      });
-    }
-
-    console.log('Address matching result:', {
-      searchAddress: normalizedSearch,
-      found: !!match,
-      matchedAddress: match?.address
-    });
-
-    return match;
-  };
-
   const processData = async () => {
     if (!workbook || !selectedSheet) return;
 
@@ -113,7 +129,6 @@ export const useExcelProcessor = () => {
       }
 
       try {
-        // Combine address and postcode properly
         const fullAddress = `${row.address}, ${row.postcode}`.trim();
         console.log('Processing full address:', fullAddress);
         
@@ -124,14 +139,23 @@ export const useExcelProcessor = () => {
         });
 
         if (functionError) {
-          console.error('Supabase function error:', functionError);
-          errors.push(`Error fetching data for ${fullAddress}: ${functionError.message}`);
+          const errorMessage = `Error fetching data for ${fullAddress}: ${functionError.message}`;
+          console.error('Supabase function error:', errorMessage);
+          errors.push(errorMessage);
           continue;
         }
 
         if (response.status === "error") {
-          console.error('API response error:', response);
-          errors.push(`Error: ${response.message} for address: ${fullAddress}`);
+          const errorMessage = `API Error: ${response.message} for address: ${fullAddress}`;
+          console.error('API response error:', errorMessage);
+          errors.push(errorMessage);
+          continue;
+        }
+
+        if (!response.data?.properties?.length) {
+          const errorMessage = `No properties found for address: ${fullAddress}`;
+          console.error(errorMessage);
+          errors.push(errorMessage);
           continue;
         }
 
@@ -146,14 +170,18 @@ export const useExcelProcessor = () => {
             habitable_rooms: propertyData.habitable_rooms,
             inspection_date: propertyData.inspection_date
           });
+          console.log('Successfully processed:', fullAddress);
         } else {
-          const error = `No matching property found for address: ${fullAddress}`;
-          console.error(error);
-          errors.push(error);
+          const errorMessage = `No matching property found for address: ${fullAddress}. Available properties: ${
+            response.data.properties.map((p: any) => p.address).join(', ')
+          }`;
+          console.error(errorMessage);
+          errors.push(errorMessage);
         }
       } catch (error) {
-        console.error('Error processing row:', error);
-        errors.push(`Error processing ${row.address}: ${(error as Error).message}`);
+        const errorMessage = `Error processing ${row.address}: ${(error as Error).message}`;
+        console.error('Processing error:', errorMessage);
+        errors.push(errorMessage);
       }
     }
 
