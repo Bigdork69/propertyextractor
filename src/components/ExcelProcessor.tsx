@@ -68,12 +68,16 @@ const ExcelProcessor = () => {
     for (const row of jsonData) {
       const rowData = row as any;
       const address = rowData['Address'] || rowData['ADDRESS'] || '';
-      const postcode = extractPostcode(address);
-      const validation = validateRow(address, postcode || '');
+      const postcode = rowData['Post Code'] || rowData['POST CODE'] || rowData['Postcode'] || rowData['POSTCODE'] || '';
+      
+      // Skip completely empty rows
+      if (!address && !postcode) continue;
+      
+      const validation = validateRow(address, postcode);
 
       preview.push({
         address,
-        postcode: postcode || '',
+        postcode,
         isValid: validation.isValid,
         error: validation.error
       });
