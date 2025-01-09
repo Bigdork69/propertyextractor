@@ -78,11 +78,12 @@ export const usePropertySearch = () => {
         );
 
         if (filteredData.length === 0) {
-          setShowingAllPostcodeResults(true);
+          setPropertyData(null); // Show no results instead of all properties
           toast({
             title: "No Exact Match Found",
-            description: "No data found for this exact address. Showing all properties in the postcode area instead.",
+            description: "No data found for this exact address.",
           });
+          return; // Exit early without showing any results
         } else {
           transformedData = filteredData;
         }
