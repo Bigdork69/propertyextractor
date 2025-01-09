@@ -20,12 +20,18 @@ export const useExcelProcessor = () => {
 
     for (const row of jsonData) {
       const rowData = row as any;
-      const address = rowData['Address'] || rowData['ADDRESS'] || '';
-      const postcode = rowData['Post Code'] || rowData['POST CODE'] || rowData['Postcode'] || rowData['POSTCODE'] || '';
+      // Check for various possible column names
+      const address = rowData['Address'] || rowData['ADDRESS'] || rowData['address'] || '';
+      const postcode = rowData['Post Code'] || rowData['POST CODE'] || rowData['Postcode'] || rowData['POSTCODE'] || rowData['postcode'] || '';
       
+      // Skip empty rows
       if (!address && !postcode) continue;
       
       const validation = validateRow(address, postcode);
+      
+      if (validation.isValid) {
+        console.log('Valid row found:', { address, postcode });
+      }
 
       preview.push({
         address,
@@ -35,11 +41,12 @@ export const useExcelProcessor = () => {
       });
     }
 
-    setPreviewData(preview);
+    setPreviewData(preview.filter(row => row.address || row.postcode));
   };
 
   const processExcelFile = async (file: File) => {
     try {
+      console.log('Processing Excel file:', file.name);
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data);
       setWorkbook(wb);
@@ -57,10 +64,40 @@ export const useExcelProcessor = () => {
   };
 
   const handleSheetChange = (sheetName: string) => {
+    console.log('Changing to sheet:', sheetName);
     setSelectedSheet(sheetName);
     if (workbook) {
       generatePreview(workbook.Sheets[sheetName]);
     }
+  };
+
+  const findBestMatch = (propertyList: any[], searchAddress: string, searchPostcode: string) => {
+    // Normalize the search address
+    const normalizedSearch = searchAddress.toLowerCase().replace(/\s+/g, ' ').trim();
+    
+    // First try exact match
+    let match = propertyList.find(prop => 
+      prop.address.toLowerCase() === normalizedSearch
+    );
+
+    // If no exact match, try fuzzy match
+    if (!match) {
+      match = propertyList.find(prop => {
+        const propAddress = prop.address.toLowerCase();
+        // Check if the main parts of the address match
+        const addressParts = normalizedSearch.split(',').map(part => part.trim());
+        return addressParts.every(part => propAddress.includes(part.toLowerCase()));
+      });
+    }
+
+    console.log('Address matching result:', {
+      searchAddress: normalizedSearch,
+      searchPostcode,
+      found: !!match,
+      matchedAddress: match?.address
+    });
+
+    return match;
   };
 
   const processData = async () => {
@@ -72,24 +109,33 @@ export const useExcelProcessor = () => {
 
     for (const row of previewData) {
       if (!row.isValid) {
-        errors.push(`Skipped row: ${row.address} - ${row.error}`);
+        errors.push(`Invalid row: ${row.address} - ${row.error}`);
         continue;
       }
 
       try {
-        console.log('Querying API for postcode:', row.postcode);
+        console.log('Processing address:', row.address, 'with postcode:', row.postcode);
+        
         const { data: response, error: functionError } = await supabase.functions.invoke('get-floor-area', {
-          body: { address: row.postcode }
+          body: { 
+            address: row.address,
+            postcode: row.postcode 
+          }
         });
 
-        if (functionError || response.status === "error") {
-          errors.push(`Error fetching data for ${row.address}: ${functionError?.message || response?.message}`);
+        if (functionError) {
+          console.error('Supabase function error:', functionError);
+          errors.push(`Error fetching data for ${row.address}: ${functionError.message}`);
           continue;
         }
 
-        const propertyData = response.data.properties.find((prop: any) => 
-          prop.address.toLowerCase().includes(row.address.toLowerCase())
-        );
+        if (response.status === "error") {
+          console.error('API response error:', response);
+          errors.push(`Error: ${response.message} for address: ${row.address}`);
+          continue;
+        }
+
+        const propertyData = findBestMatch(response.data.properties, row.address, row.postcode);
 
         if (propertyData) {
           processedData.push({
@@ -101,10 +147,12 @@ export const useExcelProcessor = () => {
             inspection_date: propertyData.inspection_date
           });
         } else {
-          errors.push(`No matching property found for address: ${row.address}`);
+          const error = `No matching property found for address: ${row.address}`;
+          console.error(error);
+          errors.push(error);
         }
       } catch (error) {
-        console.error('Error processing address:', row.address, error);
+        console.error('Error processing row:', error);
         errors.push(`Error processing ${row.address}: ${(error as Error).message}`);
       }
     }
@@ -126,8 +174,8 @@ export const useExcelProcessor = () => {
     if (errors.length > 0) {
       console.log('Processing errors:', errors);
       toast({
-        title: "Some addresses could not be processed",
-        description: `${errors.length} errors occurred. Check the console for details.`,
+        title: `${errors.length} addresses could not be processed`,
+        description: "Check the console for detailed error messages.",
         variant: "destructive",
       });
     }
