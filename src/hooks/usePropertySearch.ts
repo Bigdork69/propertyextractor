@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { validatePostcode, extractPostcode, normalizeAddress } from "@/utils/searchUtils";
+import { validatePostcode, extractPostcode, findMatches } from "@/utils/searchUtils";
 import { convertToSquareMeters } from "@/utils/propertyUtils";
 import { PropertyData } from "@/types/property";
 
@@ -76,46 +76,30 @@ export const usePropertySearch = () => {
       }));
 
       if (!isPostcodeOnly) {
-        const normalizedSearchAddress = normalizeAddress(trimmedAddress);
-        console.log('Normalized search address:', normalizedSearchAddress);
+        const { matches, type } = findMatches(transformedData, trimmedAddress);
         
-        console.log('Available properties for matching:');
-        transformedData.forEach((prop: any) => {
-          const normalizedPropAddress = normalizeAddress(prop.address);
-          console.log(`Property: "${prop.address}"
-            Normalized: "${normalizedPropAddress}"
-            Exact Match: ${normalizedPropAddress === normalizedSearchAddress}`);
-        });
-
-        const filteredData = transformedData.filter(prop => {
-          const normalizedPropAddress = normalizeAddress(prop.address);
-          const isMatch = normalizedPropAddress === normalizedSearchAddress;
-          
-          if (isMatch) {
-            console.log('Found exact match:', {
-              original: prop.address,
-              normalized: normalizedPropAddress,
-              searchNormalized: normalizedSearchAddress
-            });
-          }
-          
-          return isMatch;
-        });
-
-        if (filteredData.length === 0) {
-          console.log('No exact matches found for:', normalizedSearchAddress);
+        if (matches.length === 0) {
+          console.log('No matches found for:', trimmedAddress);
           setPropertyData(null);
           toast({
-            title: "No Exact Match Found",
-            description: "No data found for this exact address.",
+            title: "No Matches Found",
+            description: "No matching properties found for this address.",
           });
           return;
-        } else {
-          transformedData = filteredData;
         }
+
+        if (type === 'partial') {
+          toast({
+            title: "Showing Partial Matches",
+            description: "Exact match not found. Showing similar addresses.",
+          });
+        }
+
+        transformedData = matches;
       }
 
       setPropertyData(transformedData);
+      setShowingAllPostcodeResults(isPostcodeOnly);
 
       if (transformedData.length === 0) {
         toast({
