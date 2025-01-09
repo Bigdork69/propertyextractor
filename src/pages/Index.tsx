@@ -1,4 +1,5 @@
 import SearchBar from "@/components/SearchBar";
+import ExcelProcessor from "@/components/ExcelProcessor";
 
 const Index = () => {
   return (
@@ -8,6 +9,7 @@ const Index = () => {
           Property Floor Area Search
         </h1>
         <SearchBar />
+        <ExcelProcessor />
       </div>
     </div>
   );
