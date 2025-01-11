@@ -17,23 +17,42 @@ export const useExcelProcessor = () => {
   const normalizeAddress = (address: string): string => {
     console.log('Normalizing address:', address);
     
-    return address
+    // First, extract just the house number and street name
+    const parts = address
       .toLowerCase()
       .replace(/[.,]/g, '') // Remove punctuation
+      .split(',')
+      .map(part => part.trim());
+
+    // Find the part that contains the house number and street name
+    const streetPart = parts.find(part => /\d+.*(?:street|road|close|avenue|lane|way)/i.test(part));
+    const townPart = parts.find(part => part === 'antingham');
+
+    const relevantParts = [];
+    if (streetPart) relevantParts.push(streetPart);
+    if (townPart) relevantParts.push(townPart);
+
+    const normalized = relevantParts
+      .join(' ')
       .replace(/\s+/g, ' ') // Normalize spaces
       .replace(/^(flat|apartment|apt|unit)\s*(\d+)/i, 'flat $2') // Normalize flat numbers
       .replace(/(\d+)[a-z]?\s*(st|nd|rd|th)\s+floor/i, '$1 floor') // Normalize floor numbers
       .replace(/\b(ground|first|second|third|fourth|fifth)\s+floor\b/i, '') // Remove floor descriptions
       .replace(/\b(basement|lower)\s+floor\b/i, '') // Remove basement descriptions
-      .split(',') // Split by commas
-      .slice(0, 2) // Take only first two parts (usually number + street and town)
-      .join(' ') // Join back together
       .trim();
+
+    console.log('Normalized result:', normalized);
+    return normalized;
   };
 
   const findBestMatch = (propertyList: any[], searchAddress: string) => {
     console.log('Finding best match for:', searchAddress);
-    const normalizedSearch = normalizeAddress(searchAddress);
+    
+    // Remove North Walsham and postcode from search address
+    const cleanedAddress = searchAddress.replace(/,\s*North\s+Walsham\s*,.*$/i, '');
+    console.log('Cleaned address for matching:', cleanedAddress);
+    
+    const normalizedSearch = normalizeAddress(cleanedAddress);
     console.log('Normalized search address:', normalizedSearch);
     
     // Try exact match first
@@ -51,19 +70,29 @@ export const useExcelProcessor = () => {
     // Try partial match if no exact match found
     match = propertyList.find(prop => {
       const normalizedProp = normalizeAddress(prop.address);
-      // Extract just the number and street name for comparison
-      const searchParts = normalizedSearch.split(' ').filter(part => 
-        !['flat', 'apartment', 'unit'].includes(part)
-      );
       
-      const hasAllParts = searchParts.every(part => normalizedProp.includes(part));
+      // Extract key components (number and street name)
+      const propComponents = normalizedProp.split(' ');
+      const searchComponents = normalizedSearch.split(' ');
+      
+      // Check if house number and street name match
+      const hasMatchingNumber = propComponents[0] === searchComponents[0];
+      const hasMatchingStreet = searchComponents.slice(1).every(part => 
+        propComponents.includes(part)
+      );
+
+      const isMatch = hasMatchingNumber && hasMatchingStreet;
+      
       console.log('Partial match check:', {
         normalizedProp,
-        searchParts,
-        hasAllParts
+        propComponents,
+        searchComponents,
+        hasMatchingNumber,
+        hasMatchingStreet,
+        isMatch
       });
       
-      return hasAllParts;
+      return isMatch;
     });
 
     if (match) {
@@ -144,37 +173,38 @@ export const useExcelProcessor = () => {
       }
 
       try {
-        const fullAddress = `${row.address}, ${row.postcode}`.trim();
-        console.log('Processing full address:', fullAddress);
+        // Remove North Walsham from API search
+        const searchAddress = `${row.address}, ${row.postcode}`.replace(/,\s*North\s+Walsham\s*,/i, ',').trim();
+        console.log('Processing address:', searchAddress);
         
         const { data: response, error: functionError } = await supabase.functions.invoke('get-floor-area', {
           body: { 
-            address: fullAddress
+            address: searchAddress
           }
         });
 
         if (functionError) {
-          const errorMessage = `Error fetching data for ${fullAddress}: ${functionError.message}`;
+          const errorMessage = `Error fetching data for ${searchAddress}: ${functionError.message}`;
           console.error('Supabase function error:', errorMessage);
           errors.push(errorMessage);
           continue;
         }
 
         if (response.status === "error") {
-          const errorMessage = `API Error: ${response.message} for address: ${fullAddress}`;
+          const errorMessage = `API Error: ${response.message} for address: ${searchAddress}`;
           console.error('API response error:', errorMessage);
           errors.push(errorMessage);
           continue;
         }
 
         if (!response.data?.properties?.length) {
-          const errorMessage = `No properties found for address: ${fullAddress}`;
+          const errorMessage = `No properties found for address: ${searchAddress}`;
           console.error(errorMessage);
           errors.push(errorMessage);
           continue;
         }
 
-        const propertyData = findBestMatch(response.data.properties, fullAddress);
+        const propertyData = findBestMatch(response.data.properties, row.address);
 
         if (propertyData) {
           processedData.push({
@@ -185,9 +215,9 @@ export const useExcelProcessor = () => {
             habitable_rooms: propertyData.habitable_rooms,
             inspection_date: propertyData.inspection_date
           });
-          console.log('Successfully processed:', fullAddress);
+          console.log('Successfully processed:', searchAddress);
         } else {
-          const errorMessage = `No matching property found for address: ${fullAddress}. Available properties: ${
+          const errorMessage = `No matching property found for address: ${searchAddress}. Available properties: ${
             response.data.properties.map((p: any) => p.address).join(', ')
           }`;
           console.error(errorMessage);
