@@ -15,6 +15,8 @@ export const useExcelProcessor = () => {
   const { toast } = useToast();
 
   const normalizeAddress = (address: string): string => {
+    console.log('Normalizing address:', address);
+    
     return address
       .toLowerCase()
       .replace(/[.,]/g, '') // Remove punctuation
@@ -23,17 +25,23 @@ export const useExcelProcessor = () => {
       .replace(/(\d+)[a-z]?\s*(st|nd|rd|th)\s+floor/i, '$1 floor') // Normalize floor numbers
       .replace(/\b(ground|first|second|third|fourth|fifth)\s+floor\b/i, '') // Remove floor descriptions
       .replace(/\b(basement|lower)\s+floor\b/i, '') // Remove basement descriptions
+      .split(',') // Split by commas
+      .slice(0, 2) // Take only first two parts (usually number + street and town)
+      .join(' ') // Join back together
       .trim();
   };
 
   const findBestMatch = (propertyList: any[], searchAddress: string) => {
     console.log('Finding best match for:', searchAddress);
     const normalizedSearch = normalizeAddress(searchAddress);
+    console.log('Normalized search address:', normalizedSearch);
     
     // Try exact match first
-    let match = propertyList.find(prop => 
-      normalizeAddress(prop.address) === normalizedSearch
-    );
+    let match = propertyList.find(prop => {
+      const normalizedProp = normalizeAddress(prop.address);
+      console.log('Comparing with normalized property:', normalizedProp);
+      return normalizedProp === normalizedSearch;
+    });
 
     if (match) {
       console.log('Found exact match:', match.address);
@@ -43,12 +51,19 @@ export const useExcelProcessor = () => {
     // Try partial match if no exact match found
     match = propertyList.find(prop => {
       const normalizedProp = normalizeAddress(prop.address);
+      // Extract just the number and street name for comparison
       const searchParts = normalizedSearch.split(' ').filter(part => 
         !['flat', 'apartment', 'unit'].includes(part)
       );
       
-      // Check if all significant parts of the search address are in the property address
-      return searchParts.every(part => normalizedProp.includes(part));
+      const hasAllParts = searchParts.every(part => normalizedProp.includes(part));
+      console.log('Partial match check:', {
+        normalizedProp,
+        searchParts,
+        hasAllParts
+      });
+      
+      return hasAllParts;
     });
 
     if (match) {
