@@ -43,10 +43,10 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
   console.log('Fetching property data for postcode:', postcode);
   
   try {
-    // Fetch both floor areas and price per square foot data in parallel
+    // Fetch both floor areas and sold price per square foot data in parallel
     const [floorAreasResponse, priceResponse] = await Promise.all([
       fetch(`https://api.propertydata.co.uk/floor-areas?key=${apiKey}&postcode=${postcode}`),
-      fetch(`https://api.propertydata.co.uk/prices-per-sqf?key=${apiKey}&postcode=${postcode}`)
+      fetch(`https://api.propertydata.co.uk/sold-prices-per-sqf?key=${apiKey}&postcode=${postcode}`)
     ]);
 
     const floorAreasData = await floorAreasResponse.json();
