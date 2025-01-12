@@ -31,24 +31,15 @@ const compareAddresses = (propertyAddress: string, searchAddress: string): boole
 };
 
 async function fetchPriceData(postcode: string, apiKey: string) {
-  console.log('Starting fetchPriceData for postcode:', postcode);
-  
-  // Remove spaces and ensure uppercase for consistency
   const formattedPostcode = postcode.replace(/\s+/g, '').toUpperCase();
   
-  // Construct and encode the URL properly
   const url = new URL('https://api.propertydata.co.uk/prices-per-sqf');
   url.searchParams.append('key', apiKey);
   url.searchParams.append('postcode', formattedPostcode);
   
-  console.log('Fetching price data from:', url.toString());
-  
   try {
-    console.log('Making API request to PropertyData...');
     const response = await fetch(url.toString());
     const data = await response.json();
-    
-    console.log('Price data API response:', data);
     
     if (data.status === 'error') {
       console.error('Price data API error:', data.message);
@@ -153,18 +144,17 @@ serve(async (req) => {
 
     const properties = floorAreaData.known_floor_areas?.map((prop: any) => {
       const isMatch = compareAddresses(prop.address, searchAddressWithoutPostcode);
+      const estimatedValue = priceData?.price_per_sq_ft && prop.floor_area_sq_ft 
+        ? prop.floor_area_sq_ft * priceData.price_per_sq_ft 
+        : null;
       
       return {
         ...prop,
-        ...(priceData || {
-          price_per_sq_ft: null,
-          price_per_sq_m: null,
-          pricing_date: null,
-          transaction_count: null
-        }),
-        estimated_value: priceData?.price_per_sq_ft && prop.floor_area_sq_ft
-          ? prop.floor_area_sq_ft * priceData.price_per_sq_ft
-          : null
+        price_per_sq_ft: priceData?.price_per_sq_ft || null,
+        price_per_sq_m: priceData?.price_per_sq_m || null,
+        pricing_date: priceData?.pricing_date || null,
+        transaction_count: priceData?.transaction_count || null,
+        estimated_value: estimatedValue
       };
     }) || [];
 
