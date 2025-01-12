@@ -72,16 +72,20 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
       transaction_count: priceData.data?.samples || null
     };
 
-    // Combine floor areas with price data
+    // Map the properties with correct field names
     const properties = floorAreasData.known_floor_areas.map((property: any) => ({
-      ...property,
+      address: property.address,
+      floor_area_sq_ft: property.square_feet,
+      floor_area_sq_m: property.square_meters || Math.round(property.square_feet * 0.092903),
+      habitable_rooms: property.habitable_rooms,
+      inspection_date: property.inspection_date,
       ...(priceInfo && {
         price_per_sq_ft: priceInfo.price_per_sq_ft,
         price_per_sq_m: priceInfo.price_per_sq_m,
         pricing_date: priceInfo.pricing_date,
         transaction_count: priceInfo.transaction_count,
-        estimated_value: property.floor_area_sq_ft && priceInfo.price_per_sq_ft 
-          ? property.floor_area_sq_ft * priceInfo.price_per_sq_ft 
+        estimated_value: property.square_feet && priceInfo.price_per_sq_ft 
+          ? property.square_feet * priceInfo.price_per_sq_ft 
           : null
       })
     }));
