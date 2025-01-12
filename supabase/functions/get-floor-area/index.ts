@@ -64,7 +64,7 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
       };
     }
 
-    // Extract price data
+    // Extract price data - note the change from price_per_sqf to price_per_sq_ft
     const priceInfo = priceData.status === 'error' ? null : {
       price_per_sq_ft: priceData.data?.price_per_sqf || null,
       price_per_sq_m: priceData.data?.price_per_sqm || null,
