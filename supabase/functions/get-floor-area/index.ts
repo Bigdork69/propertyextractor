@@ -30,6 +30,31 @@ const compareAddresses = (propertyAddress: string, searchAddress: string): boole
   return normalizedProperty === normalizedSearch;
 };
 
+async function fetchFloorAreaData(postcode: string, apiKey: string) {
+  console.log('Fetching floor area data for postcode:', postcode);
+  
+  const url = new URL('https://api.propertydata.co.uk/floor-areas');
+  url.searchParams.append('key', apiKey);
+  url.searchParams.append('postcode', postcode);
+  
+  try {
+    console.log('Making floor area API request to:', url.toString());
+    const response = await fetch(url.toString());
+    const data = await response.json();
+    console.log('Floor area API response:', data);
+    
+    if (data.status === 'error') {
+      console.error('Floor area API error:', data.message);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching floor area data:', error);
+    return null;
+  }
+}
+
 async function fetchPriceData(postcode: string, apiKey: string) {
   console.log('Fetching price data for postcode:', postcode);
   
@@ -38,7 +63,7 @@ async function fetchPriceData(postcode: string, apiKey: string) {
   url.searchParams.append('postcode', postcode);
   
   try {
-    console.log('Making API request to:', url.toString());
+    console.log('Making price API request to:', url.toString());
     const response = await fetch(url.toString());
     const data = await response.json();
     console.log('Price data API response:', data);
@@ -116,23 +141,25 @@ serve(async (req) => {
     }
 
     const cleanPostcode = postcode.replace(/\s+/g, '');
-    const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${cleanPostcode}`;
     
     console.log('Fetching data for postcode:', cleanPostcode);
     
-    const [floorAreaResponse, priceData] = await Promise.all([
-      fetch(propertyDataUrl),
+    // Make both API calls in parallel
+    const [floorAreaData, priceData] = await Promise.all([
+      fetchFloorAreaData(cleanPostcode, PROPERTY_DATA_API_KEY),
       fetchPriceData(cleanPostcode, PROPERTY_DATA_API_KEY)
     ]);
 
-    const floorAreaData = await floorAreaResponse.json();
-    console.log('Floor area API response:', floorAreaData);
+    console.log('Combined API responses:', {
+      floorAreaData,
+      priceData
+    });
 
-    if (!floorAreaResponse.ok || floorAreaData.status === 'error') {
+    if (!floorAreaData || floorAreaData.status === 'error') {
       return new Response(
         JSON.stringify({
           status: 'error',
-          message: floorAreaData.message || 'Failed to fetch property data',
+          message: floorAreaData?.message || 'Failed to fetch property data',
           data: { properties: [] }
         }),
         { 
@@ -176,7 +203,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         status: 'success',
-        data: { properties }
+        data: { 
+          properties,
+          raw_response: {
+            floor_areas: floorAreaData,
+            prices_per_sqf: priceData
+          }
+        }
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
