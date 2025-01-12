@@ -52,8 +52,8 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
     const floorAreasData = await floorAreasResponse.json();
     const priceData = await priceResponse.json();
 
-    console.log('Floor areas response:', floorAreasData);
-    console.log('Price data response:', priceData);
+    console.log('Floor areas response:', JSON.stringify(floorAreasData, null, 2));
+    console.log('Price data response:', JSON.stringify(priceData, null, 2));
 
     if (floorAreasData.status === 'error') {
       console.error('Floor areas error:', floorAreasData.message);
@@ -64,12 +64,12 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
       };
     }
 
-    // Extract price data - note the change from price_per_sqf to price_per_sq_ft
+    // Extract price data using the correct field name from the API
     const priceInfo = priceData.status === 'error' ? null : {
-      price_per_sq_ft: priceData.data?.price_per_sqf || null,
-      price_per_sq_m: priceData.data?.price_per_sqm || null,
-      pricing_date: priceData.data?.last_updated || null,
-      transaction_count: priceData.data?.samples || null
+      price_per_sq_ft: priceData.average_price_per_sqf || null,
+      price_per_sq_m: priceData.average_price_per_sqm || null,
+      pricing_date: priceData.last_updated || null,
+      transaction_count: priceData.samples || null
     };
 
     // Map the properties with correct field names
