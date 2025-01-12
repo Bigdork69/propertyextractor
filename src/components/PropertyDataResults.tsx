@@ -1,7 +1,13 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, HelpCircle } from "lucide-react";
 import { useState } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PropertyData {
   address: string;
@@ -9,6 +15,11 @@ interface PropertyData {
   floor_area_sq_m: number | null;
   habitable_rooms: number;
   inspection_date: string;
+  price_per_sq_ft?: number | null;
+  price_per_sq_m?: number | null;
+  estimated_value?: number | null;
+  pricing_date?: string | null;
+  transaction_count?: number | null;
 }
 
 interface PropertyDataResultsProps {
@@ -16,6 +27,15 @@ interface PropertyDataResultsProps {
   isLoading: boolean;
   error: string | null;
 }
+
+const formatCurrency = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return 'N/A';
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    maximumFractionDigits: 0,
+  }).format(value);
+};
 
 const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProps) => {
   const [sortConfig, setSortConfig] = useState<{
@@ -106,6 +126,40 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                 </TableHead>
                 <TableHead 
                   className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
+                  onClick={() => sortData('price_per_sq_ft')}
+                >
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center justify-end gap-1">
+                        Price per Sq Ft
+                        <HelpCircle className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Average price per square foot in the area</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
+                </TableHead>
+                <TableHead 
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
+                  onClick={() => sortData('estimated_value')}
+                >
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center justify-end gap-1">
+                        Estimated Value
+                        <HelpCircle className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Estimated value based on floor area and local price per square foot</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
+                </TableHead>
+                <TableHead 
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('habitable_rooms')}
                 >
                   Habitable Rooms
@@ -136,6 +190,12 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                   </TableCell>
                   <TableCell className="text-right text-gray-700 whitespace-nowrap">
                     {property.floor_area_sq_m ? property.floor_area_sq_m.toLocaleString() : 'N/A'}
+                  </TableCell>
+                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
+                    {formatCurrency(property.price_per_sq_ft)}
+                  </TableCell>
+                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
+                    {formatCurrency(property.estimated_value)}
                   </TableCell>
                   <TableCell className="text-right text-gray-700 whitespace-nowrap">{property.habitable_rooms}</TableCell>
                   <TableCell className="text-right text-gray-700 whitespace-nowrap">
