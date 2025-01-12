@@ -1,10 +1,12 @@
 export const validatePostcode = (postcode: string) => {
-  const postcodeRegex = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
-  return postcodeRegex.test(postcode.trim());
+  // Allow partial postcodes like "W14 9" or full postcodes
+  const partialPostcodeRegex = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9]?[A-Z]{0,2}$/i;
+  return partialPostcodeRegex.test(postcode.trim());
 };
 
 export const extractPostcode = (input: string) => {
-  const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2})/i;
+  // Updated regex to match partial postcodes
+  const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9]?[A-Z]{0,2})/i;
   const match = input.match(postcodeRegex);
   return match ? match[1] : null;
 };
@@ -17,14 +19,14 @@ export const normalizeAddress = (addr: string) => {
   const addressWithoutPostcode = postcode ? addr.replace(postcode, '') : addr;
   
   const normalized = addressWithoutPostcode.toLowerCase()
-    .replace(/[.,]/g, '')           // Remove periods and commas
-    .replace(/\b(flat|apartment)\b/i, '')  // Remove flat/apartment
-    .replace(/\b(ground|first|second|third|fourth|fifth|top|basement)\s+floor\b/i, '') // Remove floor descriptions
-    .replace(/\b(left|right)\b/i, '') // Remove left/right descriptions
-    .replace(/([a-z])([0-9])/i, '$1 $2') // Add space between letter and number
-    .replace(/([0-9])([a-z])/i, '$1 $2') // Add space between number and letter
-    .replace(/\s+/g, ' ')           // Clean up any double spaces
-    .trim();                        // Remove leading/trailing spaces
+    .replace(/[.,]/g, '')           
+    .replace(/\b(flat|apartment)\b/i, '')  
+    .replace(/\b(ground|first|second|third|fourth|fifth|top|basement)\s+floor\b/i, '') 
+    .replace(/\b(left|right)\b/i, '') 
+    .replace(/([a-z])([0-9])/i, '$1 $2') 
+    .replace(/([0-9])([a-z])/i, '$1 $2') 
+    .replace(/\s+/g, ' ')           
+    .trim();                        
 
   console.log(`Address Normalization:
     Original: "${original}"

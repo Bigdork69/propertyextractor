@@ -19,24 +19,9 @@ const normalizeAddress = (address: string): string => {
 };
 
 const extractPostcode = (input: string): string | null => {
-  const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2})/i;
+  const postcodeRegex = /([A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9]?[A-Z]{0,2})/i;
   const match = input.match(postcodeRegex);
   return match ? match[1].trim() : null;
-};
-
-const compareAddresses = (propertyAddress: string, searchAddress: string): boolean => {
-  const normalizedProperty = normalizeAddress(propertyAddress);
-  const normalizedSearch = normalizeAddress(searchAddress);
-  
-  console.log(`Comparing addresses:
-    Property (original): "${propertyAddress}"
-    Property (normalized): "${normalizedProperty}"
-    Search (original): "${searchAddress}"
-    Search (normalized): "${normalizedSearch}"
-    Match: ${normalizedProperty === normalizedSearch}
-  `);
-  
-  return normalizedProperty === normalizedSearch;
 };
 
 async function fetchPropertyData(postcode: string, apiKey: string) {
@@ -64,7 +49,7 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
       };
     }
 
-    // Extract price data using the correct field name from the API
+    // Extract price info using the correct field name from the API
     const priceInfo = priceData.status === 'error' ? null : {
       price_per_sq_ft: priceData.data?.average || null,
       price_per_sq_m: (priceData.data?.average * 10.764) || null, // Convert to square meters
