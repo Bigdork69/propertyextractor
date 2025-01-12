@@ -143,6 +143,23 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                 </TableHead>
                 <TableHead 
                   className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
+                  onClick={() => sortData('price_per_sq_m')}
+                >
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center justify-end gap-1">
+                        Price per Sq M
+                        <HelpCircle className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Average price per square meter in the area</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
+                </TableHead>
+                <TableHead 
+                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('estimated_value')}
                 >
                   <TooltipProvider>
@@ -193,6 +210,9 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                   </TableCell>
                   <TableCell className="text-right text-gray-700 whitespace-nowrap">
                     {formatCurrency(property.price_per_sq_ft)}
+                  </TableCell>
+                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
+                    {formatCurrency(property.price_per_sq_m)}
                   </TableCell>
                   <TableCell className="text-right text-gray-700 whitespace-nowrap">
                     {formatCurrency(property.estimated_value)}
