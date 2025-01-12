@@ -39,29 +39,65 @@ const compareAddresses = (propertyAddress: string, searchAddress: string): boole
   return normalizedProperty === normalizedSearch;
 };
 
-async function fetchPriceData(postcode: string, apiKey: string) {
-  console.log('Fetching price data for postcode:', postcode);
-  const priceDataUrl = `https://api.propertydata.co.uk/prices-per-sqf?key=${apiKey}&postcode=${postcode}`;
+async function fetchPropertyData(postcode: string, apiKey: string) {
+  console.log('Fetching property data for postcode:', postcode);
   
   try {
-    const response = await fetch(priceDataUrl);
-    const data = await response.json();
-    console.log('Price data response:', data);
-    
-    if (data.status === 'error') {
-      console.error('Price data error:', data.message);
-      return null;
+    // Fetch both floor areas and price per square foot data in parallel
+    const [floorAreasResponse, priceResponse] = await Promise.all([
+      fetch(`https://api.propertydata.co.uk/floor-areas?key=${apiKey}&postcode=${postcode}`),
+      fetch(`https://api.propertydata.co.uk/prices-per-sqf?key=${apiKey}&postcode=${postcode}`)
+    ]);
+
+    const floorAreasData = await floorAreasResponse.json();
+    const priceData = await priceResponse.json();
+
+    console.log('Floor areas response:', floorAreasData);
+    console.log('Price data response:', priceData);
+
+    if (floorAreasData.status === 'error') {
+      console.error('Floor areas error:', floorAreasData.message);
+      return {
+        status: 'error',
+        message: floorAreasData.message,
+        data: { properties: [] }
+      };
     }
-    
-    return {
-      price_per_sq_ft: data.data?.price_per_sqf || null,
-      price_per_sq_m: data.data?.price_per_sqm || null,
-      pricing_date: data.data?.last_updated || null,
-      transaction_count: data.data?.samples || null
+
+    // Extract price data
+    const priceInfo = priceData.status === 'error' ? null : {
+      price_per_sq_ft: priceData.data?.price_per_sqf || null,
+      price_per_sq_m: priceData.data?.price_per_sqm || null,
+      pricing_date: priceData.data?.last_updated || null,
+      transaction_count: priceData.data?.samples || null
     };
+
+    // Combine floor areas with price data
+    const properties = floorAreasData.known_floor_areas.map((property: any) => ({
+      ...property,
+      ...(priceInfo && {
+        price_per_sq_ft: priceInfo.price_per_sq_ft,
+        price_per_sq_m: priceInfo.price_per_sq_m,
+        pricing_date: priceInfo.pricing_date,
+        transaction_count: priceInfo.transaction_count,
+        estimated_value: property.floor_area_sq_ft && priceInfo.price_per_sq_ft 
+          ? property.floor_area_sq_ft * priceInfo.price_per_sq_ft 
+          : null
+      })
+    }));
+
+    return {
+      status: 'success',
+      data: { properties }
+    };
+
   } catch (error) {
-    console.error('Error fetching price data:', error);
-    return null;
+    console.error('Error fetching property data:', error);
+    return {
+      status: 'error',
+      message: 'Failed to fetch property data',
+      data: { properties: [] }
+    };
   }
 }
 
@@ -121,66 +157,10 @@ serve(async (req) => {
     }
 
     const cleanPostcode = postcode.replace(/\s+/g, '');
-    const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${cleanPostcode}`;
-    
-    const [floorAreaResponse, priceData] = await Promise.all([
-      fetch(propertyDataUrl),
-      fetchPriceData(cleanPostcode, PROPERTY_DATA_API_KEY)
-    ]);
-
-    const floorAreaData = await floorAreaResponse.json();
-    console.log('PropertyData API response:', floorAreaData);
-
-    if (!floorAreaResponse.ok || floorAreaData.status === 'error') {
-      return new Response(
-        JSON.stringify({
-          status: 'error',
-          message: floorAreaData.message || 'Failed to fetch property data',
-          data: { properties: [] }
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
-        }
-      );
-    }
-
-    const searchAddressWithoutPostcode = address.replace(postcode, '').trim();
-    const matchingProperties = floorAreaData.known_floor_areas?.map((prop: any) => {
-      const isMatch = compareAddresses(prop.address, searchAddressWithoutPostcode);
-      if (isMatch && priceData) {
-        const estimatedValue = prop.floor_area_sq_ft && priceData.price_per_sq_ft
-          ? prop.floor_area_sq_ft * priceData.price_per_sq_ft
-          : null;
-        
-        return {
-          ...prop,
-          ...priceData,
-          estimated_value: estimatedValue
-        };
-      }
-      return prop;
-    }).filter((prop: any) => compareAddresses(prop.address, searchAddressWithoutPostcode)) || [];
-
-    if (matchingProperties.length === 0) {
-      return new Response(
-        JSON.stringify({
-          status: 'success',
-          message: 'No exact match found for the address',
-          data: { properties: [] }
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
-        }
-      );
-    }
+    const result = await fetchPropertyData(cleanPostcode, PROPERTY_DATA_API_KEY);
 
     return new Response(
-      JSON.stringify({
-        status: 'success',
-        data: { properties: matchingProperties }
-      }),
+      JSON.stringify(result),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
