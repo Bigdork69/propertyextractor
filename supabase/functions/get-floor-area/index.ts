@@ -31,15 +31,17 @@ const compareAddresses = (propertyAddress: string, searchAddress: string): boole
 };
 
 async function fetchPriceData(postcode: string, apiKey: string) {
-  const formattedPostcode = postcode.replace(/\s+/g, '').toUpperCase();
+  console.log('Fetching price data for postcode:', postcode);
   
   const url = new URL('https://api.propertydata.co.uk/prices-per-sqf');
   url.searchParams.append('key', apiKey);
-  url.searchParams.append('postcode', formattedPostcode);
+  url.searchParams.append('postcode', postcode);
   
   try {
+    console.log('Making API request to:', url.toString());
     const response = await fetch(url.toString());
     const data = await response.json();
+    console.log('Price data API response:', data);
     
     if (data.status === 'error') {
       console.error('Price data API error:', data.message);
@@ -47,13 +49,13 @@ async function fetchPriceData(postcode: string, apiKey: string) {
     }
     
     if (!data.data) {
-      console.log('No price data available for postcode:', formattedPostcode);
+      console.log('No price data available for postcode:', postcode);
       return null;
     }
     
     return {
-      price_per_sq_ft: data.data.price_per_sqf || null,
-      price_per_sq_m: data.data.price_per_sqm || null,
+      price_per_sq_ft: data.data.average_price_per_sqf || null,
+      price_per_sq_m: (data.data.average_price_per_sqf * 10.764) || null,
       pricing_date: data.data.last_updated || null,
       transaction_count: data.data.samples || null
     };
@@ -119,12 +121,15 @@ serve(async (req) => {
     const cleanPostcode = postcode.replace(/\s+/g, '');
     const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${cleanPostcode}`;
     
+    console.log('Fetching data for postcode:', cleanPostcode);
+    
     const [floorAreaResponse, priceData] = await Promise.all([
       fetch(propertyDataUrl),
       fetchPriceData(cleanPostcode, PROPERTY_DATA_API_KEY)
     ]);
 
     const floorAreaData = await floorAreaResponse.json();
+    console.log('Floor area API response:', floorAreaData);
 
     if (!floorAreaResponse.ok || floorAreaData.status === 'error') {
       return new Response(
@@ -148,6 +153,13 @@ serve(async (req) => {
         ? prop.floor_area_sq_ft * priceData.price_per_sq_ft 
         : null;
       
+      console.log('Processing property:', {
+        address: prop.address,
+        floorArea: prop.floor_area_sq_ft,
+        pricePerSqFt: priceData?.price_per_sq_ft,
+        estimatedValue
+      });
+      
       return {
         ...prop,
         price_per_sq_ft: priceData?.price_per_sq_ft || null,
@@ -157,6 +169,8 @@ serve(async (req) => {
         estimated_value: estimatedValue
       };
     }) || [];
+
+    console.log('Returning properties with price data:', properties);
 
     return new Response(
       JSON.stringify({
