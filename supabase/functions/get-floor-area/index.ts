@@ -66,10 +66,10 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
 
     // Extract price data using the correct field name from the API
     const priceInfo = priceData.status === 'error' ? null : {
-      price_per_sq_ft: priceData.average_price_per_sqf || null,
-      price_per_sq_m: priceData.average_price_per_sqm || null,
+      price_per_sq_ft: priceData.data?.average || null,
+      price_per_sq_m: (priceData.data?.average * 10.764) || null, // Convert to square meters
       pricing_date: priceData.last_updated || null,
-      transaction_count: priceData.samples || null
+      transaction_count: priceData.data?.points_analysed || null
     };
 
     // Map the properties with correct field names
