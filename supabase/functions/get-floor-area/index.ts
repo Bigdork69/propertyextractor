@@ -31,6 +31,8 @@ const compareAddresses = (propertyAddress: string, searchAddress: string): boole
 };
 
 async function fetchPriceData(postcode: string, apiKey: string) {
+  console.log('Starting fetchPriceData for postcode:', postcode);
+  
   // Remove spaces and ensure uppercase for consistency
   const formattedPostcode = postcode.replace(/\s+/g, '').toUpperCase();
   
@@ -42,10 +44,11 @@ async function fetchPriceData(postcode: string, apiKey: string) {
   console.log('Fetching price data from:', url.toString());
   
   try {
+    console.log('Making API request to PropertyData...');
     const response = await fetch(url.toString());
     const data = await response.json();
     
-    console.log('Price data response:', data);
+    console.log('Price data API response:', data);
     
     if (data.status === 'error') {
       console.error('Price data API error:', data.message);
