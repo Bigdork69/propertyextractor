@@ -45,12 +45,18 @@ async function fetchPriceData(postcode: string, apiKey: string) {
   console.log('Price data API URL:', priceDataUrl.replace(apiKey, '[REDACTED]'));
   
   try {
+    console.log('Making API request to propertydata.co.uk...');
     const response = await fetch(priceDataUrl);
     const data = await response.json();
     console.log('Raw price data response:', JSON.stringify(data, null, 2));
     
     if (data.status === 'error') {
       console.error('Price data API error:', data.message);
+      return null;
+    }
+    
+    if (!data.data?.price_per_sqf) {
+      console.warn('No price per square foot data available in response');
       return null;
     }
     
