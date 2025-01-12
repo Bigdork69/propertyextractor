@@ -40,17 +40,17 @@ const compareAddresses = (propertyAddress: string, searchAddress: string): boole
 };
 
 async function fetchPriceData(postcode: string, apiKey: string) {
-  console.log('Fetching price data for postcode:', postcode);
+  console.log('Starting price data fetch for postcode:', postcode);
   const priceDataUrl = `https://api.propertydata.co.uk/prices-per-sqf?key=${apiKey}&postcode=${postcode}`;
   console.log('Price data API URL:', priceDataUrl.replace(apiKey, '[REDACTED]'));
   
   try {
     const response = await fetch(priceDataUrl);
     const data = await response.json();
-    console.log('Price data raw response:', data);
+    console.log('Raw price data response:', JSON.stringify(data, null, 2));
     
     if (data.status === 'error') {
-      console.error('Price data error:', data.message);
+      console.error('Price data API error:', data.message);
       return null;
     }
     
@@ -145,7 +145,7 @@ serve(async (req) => {
     ]);
 
     const floorAreaData = await floorAreaResponse.json();
-    console.log('Floor area API response:', floorAreaData);
+    console.log('Floor area API response:', JSON.stringify(floorAreaData, null, 2));
 
     if (!floorAreaResponse.ok || floorAreaData.status === 'error') {
       console.error('Floor area API error:', floorAreaData);
