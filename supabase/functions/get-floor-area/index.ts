@@ -31,13 +31,29 @@ const compareAddresses = (propertyAddress: string, searchAddress: string): boole
 };
 
 async function fetchPriceData(postcode: string, apiKey: string) {
-  const priceDataUrl = `https://api.propertydata.co.uk/prices-per-sqf?key=${apiKey}&postcode=${postcode}`;
+  // Remove spaces and ensure uppercase for consistency
+  const formattedPostcode = postcode.replace(/\s+/g, '').toUpperCase();
+  
+  // Construct and encode the URL properly
+  const url = new URL('https://api.propertydata.co.uk/prices-per-sqf');
+  url.searchParams.append('key', apiKey);
+  url.searchParams.append('postcode', formattedPostcode);
+  
+  console.log('Fetching price data from:', url.toString());
   
   try {
-    const response = await fetch(priceDataUrl);
+    const response = await fetch(url.toString());
     const data = await response.json();
     
-    if (data.status === 'error' || !data.data) {
+    console.log('Price data response:', data);
+    
+    if (data.status === 'error') {
+      console.error('Price data API error:', data.message);
+      return null;
+    }
+    
+    if (!data.data) {
+      console.log('No price data available for postcode:', formattedPostcode);
       return null;
     }
     
@@ -48,6 +64,7 @@ async function fetchPriceData(postcode: string, apiKey: string) {
       transaction_count: data.data.samples || null
     };
   } catch (error) {
+    console.error('Error fetching price data:', error);
     return null;
   }
 }
@@ -134,24 +151,17 @@ serve(async (req) => {
     const properties = floorAreaData.known_floor_areas?.map((prop: any) => {
       const isMatch = compareAddresses(prop.address, searchAddressWithoutPostcode);
       
-      if (isMatch && priceData) {
-        const estimatedValue = prop.floor_area_sq_ft && priceData.price_per_sq_ft
-          ? prop.floor_area_sq_ft * priceData.price_per_sq_ft
-          : null;
-        
-        return {
-          ...prop,
-          ...priceData,
-          estimated_value: estimatedValue
-        };
-      }
       return {
         ...prop,
-        price_per_sq_ft: null,
-        price_per_sq_m: null,
-        estimated_value: null,
-        pricing_date: null,
-        transaction_count: null
+        ...(priceData || {
+          price_per_sq_ft: null,
+          price_per_sq_m: null,
+          pricing_date: null,
+          transaction_count: null
+        }),
+        estimated_value: priceData?.price_per_sq_ft && prop.floor_area_sq_ft
+          ? prop.floor_area_sq_ft * priceData.price_per_sq_ft
+          : null
       };
     }) || [];
 
@@ -167,6 +177,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    console.error('Unexpected error:', error);
     return new Response(
       JSON.stringify({ 
         status: 'error', 
