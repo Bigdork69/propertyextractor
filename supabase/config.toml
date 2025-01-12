@@ -1,1 +1,7 @@
 project_id = "mmuxdhhfqryxgrhekqkd"
+
+[functions.get-floor-area]
+verify_jwt = false
+
+[functions.get-price-per-sqft]
+verify_jwt = false
