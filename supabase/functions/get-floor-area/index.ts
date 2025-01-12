@@ -27,71 +27,40 @@ const extractPostcode = (input: string): string | null => {
 const compareAddresses = (propertyAddress: string, searchAddress: string): boolean => {
   const normalizedProperty = normalizeAddress(propertyAddress);
   const normalizedSearch = normalizeAddress(searchAddress);
-  
-  console.log(`Comparing addresses:
-    Property (original): "${propertyAddress}"
-    Property (normalized): "${normalizedProperty}"
-    Search (original): "${searchAddress}"
-    Search (normalized): "${normalizedSearch}"
-    Match: ${normalizedProperty === normalizedSearch}
-  `);
-  
   return normalizedProperty === normalizedSearch;
 };
 
 async function fetchPriceData(postcode: string, apiKey: string) {
-  console.log('Starting price data fetch for postcode:', postcode);
   const priceDataUrl = `https://api.propertydata.co.uk/prices-per-sqf?key=${apiKey}&postcode=${postcode}`;
-  console.log('Price data API URL:', priceDataUrl.replace(apiKey, '[REDACTED]'));
   
   try {
-    console.log('Making API request to propertydata.co.uk...');
     const response = await fetch(priceDataUrl);
     const data = await response.json();
-    console.log('Raw price data response:', JSON.stringify(data, null, 2));
     
-    if (data.status === 'error') {
-      console.error('Price data API error:', data.message);
+    if (data.status === 'error' || !data.data) {
       return null;
     }
     
-    if (!data.data?.price_per_sqf) {
-      console.warn('No price per square foot data available in response');
-      return null;
-    }
-    
-    const result = {
-      price_per_sq_ft: data.data?.price_per_sqf || null,
-      price_per_sq_m: data.data?.price_per_sqm || null,
-      pricing_date: data.data?.last_updated || null,
-      transaction_count: data.data?.samples || null
+    return {
+      price_per_sq_ft: data.data.price_per_sqf || null,
+      price_per_sq_m: data.data.price_per_sqm || null,
+      pricing_date: data.data.last_updated || null,
+      transaction_count: data.data.samples || null
     };
-    
-    console.log('Transformed price data:', result);
-    return result;
   } catch (error) {
-    console.error('Error fetching price data:', error);
     return null;
   }
 }
 
 serve(async (req) => {
-  console.log('Request received:', {
-    method: req.method,
-    url: req.url,
-    headers: Object.fromEntries(req.headers.entries())
-  });
-
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { address } = await req.json();
-    console.log('Received search address:', address);
 
     if (!address) {
-      console.log('Error: No address provided');
       return new Response(
         JSON.stringify({ 
           status: "error", 
@@ -106,10 +75,8 @@ serve(async (req) => {
     }
 
     const postcode = extractPostcode(address);
-    console.log('Extracted postcode:', postcode);
 
     if (!postcode) {
-      console.log('Error: No valid postcode found in address');
       return new Response(
         JSON.stringify({
           status: 'error',
@@ -125,7 +92,6 @@ serve(async (req) => {
 
     const PROPERTY_DATA_API_KEY = Deno.env.get('PROPERTY_DATA_API_KEY');
     if (!PROPERTY_DATA_API_KEY) {
-      console.error('API configuration error: Missing API key');
       return new Response(
         JSON.stringify({
           status: 'error',
@@ -140,10 +106,7 @@ serve(async (req) => {
     }
 
     const cleanPostcode = postcode.replace(/\s+/g, '');
-    console.log('Clean postcode for API call:', cleanPostcode);
-    
     const propertyDataUrl = `https://api.propertydata.co.uk/floor-areas?key=${PROPERTY_DATA_API_KEY}&postcode=${cleanPostcode}`;
-    console.log('Floor areas API URL:', propertyDataUrl.replace(PROPERTY_DATA_API_KEY, '[REDACTED]'));
     
     const [floorAreaResponse, priceData] = await Promise.all([
       fetch(propertyDataUrl),
@@ -151,10 +114,8 @@ serve(async (req) => {
     ]);
 
     const floorAreaData = await floorAreaResponse.json();
-    console.log('Floor area API response:', JSON.stringify(floorAreaData, null, 2));
 
     if (!floorAreaResponse.ok || floorAreaData.status === 'error') {
-      console.error('Floor area API error:', floorAreaData);
       return new Response(
         JSON.stringify({
           status: 'error',
@@ -169,10 +130,8 @@ serve(async (req) => {
     }
 
     const searchAddressWithoutPostcode = address.replace(postcode, '').trim();
-    console.log('Search address without postcode:', searchAddressWithoutPostcode);
 
-    const matchingProperties = floorAreaData.known_floor_areas?.map((prop: any) => {
-      console.log('Processing property:', prop);
+    const properties = floorAreaData.known_floor_areas?.map((prop: any) => {
       const isMatch = compareAddresses(prop.address, searchAddressWithoutPostcode);
       
       if (isMatch && priceData) {
@@ -180,43 +139,26 @@ serve(async (req) => {
           ? prop.floor_area_sq_ft * priceData.price_per_sq_ft
           : null;
         
-        console.log('Match found! Adding price data:', {
-          address: prop.address,
-          estimatedValue,
-          priceData
-        });
-        
         return {
           ...prop,
           ...priceData,
           estimated_value: estimatedValue
         };
       }
-      return prop;
-    }).filter((prop: any) => compareAddresses(prop.address, searchAddressWithoutPostcode)) || [];
+      return {
+        ...prop,
+        price_per_sq_ft: null,
+        price_per_sq_m: null,
+        estimated_value: null,
+        pricing_date: null,
+        transaction_count: null
+      };
+    }) || [];
 
-    console.log('Final matching properties:', matchingProperties);
-
-    if (matchingProperties.length === 0) {
-      console.log('No matching properties found');
-      return new Response(
-        JSON.stringify({
-          status: 'success',
-          message: 'No exact match found for the address',
-          data: { properties: [] }
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
-        }
-      );
-    }
-
-    console.log('Sending successful response with properties');
     return new Response(
       JSON.stringify({
         status: 'success',
-        data: { properties: matchingProperties }
+        data: { properties }
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -225,7 +167,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Unexpected error:', error);
     return new Response(
       JSON.stringify({ 
         status: 'error', 
