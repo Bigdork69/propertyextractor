@@ -48,16 +48,13 @@ async function fetchPriceData(postcode: string, apiKey: string) {
       return null;
     }
     
-    if (!data.data) {
-      console.log('No price data available for postcode:', postcode);
-      return null;
-    }
-    
     return {
-      price_per_sq_ft: data.data.average_price_per_sqf || null,
-      price_per_sq_m: (data.data.average_price_per_sqf * 10.764) || null,
-      pricing_date: data.data.last_updated || null,
-      transaction_count: data.data.samples || null
+      price_per_sq_ft: data.average_price_per_sqf || null,
+      price_per_sq_m: data.average_price_per_sqf ? (data.average_price_per_sqf * 10.764) : null,
+      pricing_date: data.last_updated || null,
+      transaction_count: data.samples || null,
+      property_type_prices: data.property_type_prices || null,
+      property_condition_prices: data.property_condition_prices || null
     };
   } catch (error) {
     console.error('Error fetching price data:', error);
@@ -157,7 +154,9 @@ serve(async (req) => {
         address: prop.address,
         floorArea: prop.floor_area_sq_ft,
         pricePerSqFt: priceData?.price_per_sq_ft,
-        estimatedValue
+        estimatedValue,
+        propertyTypePrices: priceData?.property_type_prices,
+        propertyConditionPrices: priceData?.property_condition_prices
       });
       
       return {
@@ -166,7 +165,9 @@ serve(async (req) => {
         price_per_sq_m: priceData?.price_per_sq_m || null,
         pricing_date: priceData?.pricing_date || null,
         transaction_count: priceData?.transaction_count || null,
-        estimated_value: estimatedValue
+        estimated_value: estimatedValue,
+        property_type_prices: priceData?.property_type_prices || null,
+        property_condition_prices: priceData?.property_condition_prices || null
       };
     }) || [];
 
