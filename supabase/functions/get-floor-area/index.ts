@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -31,7 +32,8 @@ const calculateDaysAgo = (dateString: string): number => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
-const calculateConfidenceLevel = (sampleSize: number, dataAgeDays: number): 'High' | 'Medium' | 'Low' => {
+const calculateConfidenceLevel = (sampleSize: number | undefined, dataAgeDays: number | undefined): 'High' | 'Medium' | 'Low' => {
+  if (!sampleSize || !dataAgeDays) return 'Low';
   if (sampleSize > 30 && dataAgeDays < 90) return 'High';
   if (sampleSize > 10 && dataAgeDays < 180) return 'Medium';
   return 'Low';
@@ -49,7 +51,6 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
     const floorAreasData = await floorAreasResponse.json();
     const priceData = await priceResponse.json();
 
-    console.log('Floor areas response:', JSON.stringify(floorAreasData, null, 2));
     console.log('Price data response:', JSON.stringify(priceData, null, 2));
 
     if (floorAreasData.status === 'error') {
@@ -61,43 +62,60 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
       };
     }
 
-    const dataAgeDays = calculateDaysAgo(priceData.last_updated);
-    
-    // Extract price info with confidence intervals
-    const priceInfo = priceData.status === 'error' ? null : {
-      price_per_sq_ft: priceData.data?.average || null,
-      price_per_sq_m: (priceData.data?.average * 10.764) || null,
-      pricing_date: priceData.last_updated || null,
-      transaction_count: priceData.data?.points_analysed || null,
-      lower_bound_price: priceData.data?.confidence_interval?.lower || null,
-      upper_bound_price: priceData.data?.confidence_interval?.upper || null,
-      data_age_days: dataAgeDays,
-      confidence_level: calculateConfidenceLevel(
-        priceData.data?.points_analysed || 0,
+    // Extract price data with better error handling
+    let priceInfo = null;
+    if (priceData.status !== 'error' && priceData.data) {
+      const dataAgeDays = priceData.last_updated ? calculateDaysAgo(priceData.last_updated) : null;
+      const confidence = calculateConfidenceLevel(
+        priceData.data.points_analysed,
         dataAgeDays
-      )
-    };
+      );
 
-    const properties = floorAreasData.known_floor_areas.map((property: any) => ({
-      address: property.address,
-      floor_area_sq_ft: property.square_feet,
-      floor_area_sq_m: property.square_meters || Math.round(property.square_feet * 0.092903),
-      habitable_rooms: property.habitable_rooms,
-      inspection_date: property.inspection_date,
-      ...(priceInfo && {
-        price_per_sq_ft: priceInfo.price_per_sq_ft,
-        price_per_sq_m: priceInfo.price_per_sq_m,
-        pricing_date: priceInfo.pricing_date,
-        transaction_count: priceInfo.transaction_count,
-        lower_bound_price: priceInfo.lower_bound_price,
-        upper_bound_price: priceInfo.upper_bound_price,
-        data_age_days: priceInfo.data_age_days,
-        confidence_level: priceInfo.confidence_level,
-        estimated_value: property.square_feet && priceInfo.price_per_sq_ft 
+      console.log('Calculated values:', {
+        dataAgeDays,
+        pointsAnalyzed: priceData.data.points_analysed,
+        confidence,
+        average: priceData.data.average,
+        confidenceInterval: priceData.data.confidence_interval
+      });
+
+      priceInfo = {
+        price_per_sq_ft: priceData.data.average || null,
+        price_per_sq_m: priceData.data.average ? (priceData.data.average * 10.764) : null,
+        pricing_date: priceData.last_updated || null,
+        transaction_count: priceData.data.points_analysed || null,
+        lower_bound_price: priceData.data.confidence_interval?.lower || null,
+        upper_bound_price: priceData.data.confidence_interval?.upper || null,
+        data_age_days: dataAgeDays,
+        confidence_level: confidence
+      };
+    }
+
+    const properties = floorAreasData.known_floor_areas.map((property: any) => {
+      const propertyData = {
+        address: property.address,
+        floor_area_sq_ft: property.square_feet,
+        floor_area_sq_m: property.square_meters || Math.round(property.square_feet * 0.092903),
+        habitable_rooms: property.habitable_rooms,
+        inspection_date: property.inspection_date,
+      };
+
+      if (priceInfo) {
+        const estimatedValue = property.square_feet && priceInfo.price_per_sq_ft 
           ? property.square_feet * priceInfo.price_per_sq_ft 
-          : null
-      })
-    }));
+          : null;
+
+        return {
+          ...propertyData,
+          ...priceInfo,
+          estimated_value: estimatedValue,
+        };
+      }
+
+      return propertyData;
+    });
+
+    console.log('Processed property data:', JSON.stringify(properties[0], null, 2));
 
     return {
       status: 'success',
