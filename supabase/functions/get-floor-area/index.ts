@@ -33,6 +33,7 @@ const calculateDaysAgo = (dateString: string): number => {
 };
 
 const calculateConfidenceLevel = (sampleSize: number | undefined, dataAgeDays: number | undefined): 'High' | 'Medium' | 'Low' => {
+  console.log('Calculating confidence level with:', { sampleSize, dataAgeDays });
   if (!sampleSize || !dataAgeDays) return 'Low';
   if (sampleSize > 30 && dataAgeDays < 90) return 'High';
   if (sampleSize > 10 && dataAgeDays < 180) return 'Medium';
@@ -51,7 +52,14 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
     const floorAreasData = await floorAreasResponse.json();
     const priceData = await priceResponse.json();
 
-    console.log('Price data response:', JSON.stringify(priceData, null, 2));
+    console.log('Raw price data response:', JSON.stringify(priceData, null, 2));
+    console.log('Price data status:', priceData.status);
+    console.log('Price data content:', {
+      average: priceData.data?.average,
+      points_analysed: priceData.data?.points_analysed,
+      confidence_interval: priceData.data?.confidence_interval,
+      last_updated: priceData.last_updated
+    });
 
     if (floorAreasData.status === 'error') {
       console.error('Floor areas error:', floorAreasData.message);
@@ -71,12 +79,14 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
         dataAgeDays
       );
 
-      console.log('Calculated values:', {
+      console.log('Price data analysis:', {
         dataAgeDays,
         pointsAnalyzed: priceData.data.points_analysed,
         confidence,
         average: priceData.data.average,
-        confidenceInterval: priceData.data.confidence_interval
+        confidenceInterval: priceData.data.confidence_interval,
+        lowerBound: priceData.data.confidence_interval?.lower,
+        upperBound: priceData.data.confidence_interval?.upper
       });
 
       priceInfo = {
@@ -89,6 +99,8 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
         data_age_days: dataAgeDays,
         confidence_level: confidence
       };
+
+      console.log('Processed price info:', priceInfo);
     }
 
     const properties = floorAreasData.known_floor_areas.map((property: any) => {
@@ -105,17 +117,18 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
           ? property.square_feet * priceInfo.price_per_sq_ft 
           : null;
 
-        return {
+        const result = {
           ...propertyData,
           ...priceInfo,
           estimated_value: estimatedValue,
         };
+
+        console.log('Final property data:', JSON.stringify(result, null, 2));
+        return result;
       }
 
       return propertyData;
     });
-
-    console.log('Processed property data:', JSON.stringify(properties[0], null, 2));
 
     return {
       status: 'success',
