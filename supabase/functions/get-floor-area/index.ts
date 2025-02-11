@@ -73,30 +73,40 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
     // Extract price data with better error handling
     let priceInfo = null;
     if (priceData.status !== 'error' && priceData.data) {
-      const dataAgeDays = priceData.last_updated ? calculateDaysAgo(priceData.last_updated) : null;
+      const dataAgeDays = priceData.last_updated ? calculateDaysAgo(priceData.last_updated) : undefined;
       const confidence = calculateConfidenceLevel(
         priceData.data.points_analysed,
         dataAgeDays
       );
+
+      // Log the raw confidence interval data
+      console.log('Raw confidence interval data:', priceData.data.confidence_interval);
+
+      // Get confidence interval values, ensuring they're numbers
+      const lowerBound = typeof priceData.data.confidence_interval?.lower === 'number' 
+        ? priceData.data.confidence_interval.lower 
+        : null;
+      const upperBound = typeof priceData.data.confidence_interval?.upper === 'number' 
+        ? priceData.data.confidence_interval.upper 
+        : null;
 
       console.log('Price data analysis:', {
         dataAgeDays,
         pointsAnalyzed: priceData.data.points_analysed,
         confidence,
         average: priceData.data.average,
-        confidenceInterval: priceData.data.confidence_interval,
-        lowerBound: priceData.data.confidence_interval?.lower,
-        upperBound: priceData.data.confidence_interval?.upper
+        lowerBound,
+        upperBound
       });
 
       priceInfo = {
         price_per_sq_ft: priceData.data.average || null,
         price_per_sq_m: priceData.data.average ? (priceData.data.average * 10.764) : null,
         pricing_date: priceData.last_updated || null,
-        transaction_count: priceData.data.points_analysed || null,
-        lower_bound_price: priceData.data.confidence_interval?.lower || null,
-        upper_bound_price: priceData.data.confidence_interval?.upper || null,
-        data_age_days: dataAgeDays,
+        transaction_count: priceData.data.points_analysed || 0,
+        lower_bound_price: lowerBound,
+        upper_bound_price: upperBound,
+        data_age_days: dataAgeDays || 0,
         confidence_level: confidence
       };
 
@@ -117,10 +127,20 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
           ? property.square_feet * priceInfo.price_per_sq_ft 
           : null;
 
+        // Calculate price ranges based on the floor area
+        const lowerBoundValue = property.square_feet && priceInfo.lower_bound_price 
+          ? property.square_feet * priceInfo.lower_bound_price 
+          : null;
+        const upperBoundValue = property.square_feet && priceInfo.upper_bound_price 
+          ? property.square_feet * priceInfo.upper_bound_price 
+          : null;
+
         const result = {
           ...propertyData,
           ...priceInfo,
           estimated_value: estimatedValue,
+          lower_bound_value: lowerBoundValue,
+          upper_bound_value: upperBoundValue,
         };
 
         console.log('Final property data:', JSON.stringify(result, null, 2));
