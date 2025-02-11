@@ -1,3 +1,4 @@
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ArrowUpDown, HelpCircle } from "lucide-react";
@@ -107,21 +108,51 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                   className="text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('address')}
                 >
-                  Address
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1">
+                        Address
+                        <HelpCircle className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Full property address including house number and street name</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
                   className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('floor_area_sq_ft')}
                 >
-                  Floor Area (Square Feet)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center justify-end gap-1">
+                        Floor Area (Square Feet)
+                        <HelpCircle className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Total floor area of the property measured in square feet from EPC data</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
                   className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('floor_area_sq_m')}
                 >
-                  Floor Area (Square Meters)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center justify-end gap-1">
+                        Floor Area (Square Meters)
+                        <HelpCircle className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Total floor area of the property measured in square meters, converted from square feet</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
@@ -135,7 +166,7 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                         <HelpCircle className="h-4 w-4" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Average price per square foot in the area</p>
+                        <p>Average sold price per square foot based on recent transactions in the area</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -152,7 +183,7 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                         <HelpCircle className="h-4 w-4" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Average price per square meter in the area</p>
+                        <p>Average sold price per square meter based on recent transactions in the area</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -169,7 +200,7 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                         <HelpCircle className="h-4 w-4" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Estimated value based on floor area and local price per square foot</p>
+                        <p>Estimated property value calculated using the floor area and local price per square foot</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -179,14 +210,34 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
                   className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('habitable_rooms')}
                 >
-                  Habitable Rooms
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center justify-end gap-1">
+                        Habitable Rooms
+                        <HelpCircle className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Number of habitable rooms excluding bathrooms, toilets, halls, and storage spaces</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
                 <TableHead 
                   className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
                   onClick={() => sortData('inspection_date')}
                 >
-                  Inspection Date
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center justify-end gap-1">
+                        Inspection Date
+                        <HelpCircle className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Date when the property was last inspected for the EPC assessment</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
                 </TableHead>
               </TableRow>
@@ -232,3 +283,4 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
 };
 
 export default PropertyDataResults;
+
