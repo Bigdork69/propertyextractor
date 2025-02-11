@@ -24,11 +24,23 @@ const extractPostcode = (input: string): string | null => {
   return match ? match[1].trim() : null;
 };
 
+const calculateDaysAgo = (dateString: string): number => {
+  const lastUpdated = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - lastUpdated.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+const calculateConfidenceLevel = (sampleSize: number, dataAgeDays: number): 'High' | 'Medium' | 'Low' => {
+  if (sampleSize > 30 && dataAgeDays < 90) return 'High';
+  if (sampleSize > 10 && dataAgeDays < 180) return 'Medium';
+  return 'Low';
+};
+
 async function fetchPropertyData(postcode: string, apiKey: string) {
   console.log('Fetching property data for postcode:', postcode);
   
   try {
-    // Fetch both floor areas and sold price per square foot data in parallel
     const [floorAreasResponse, priceResponse] = await Promise.all([
       fetch(`https://api.propertydata.co.uk/floor-areas?key=${apiKey}&postcode=${postcode}`),
       fetch(`https://api.propertydata.co.uk/sold-prices-per-sqf?key=${apiKey}&postcode=${postcode}`)
@@ -49,15 +61,23 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
       };
     }
 
-    // Extract price info using the correct field name from the API
+    const dataAgeDays = calculateDaysAgo(priceData.last_updated);
+    
+    // Extract price info with confidence intervals
     const priceInfo = priceData.status === 'error' ? null : {
       price_per_sq_ft: priceData.data?.average || null,
-      price_per_sq_m: (priceData.data?.average * 10.764) || null, // Convert to square meters
+      price_per_sq_m: (priceData.data?.average * 10.764) || null,
       pricing_date: priceData.last_updated || null,
-      transaction_count: priceData.data?.points_analysed || null
+      transaction_count: priceData.data?.points_analysed || null,
+      lower_bound_price: priceData.data?.confidence_interval?.lower || null,
+      upper_bound_price: priceData.data?.confidence_interval?.upper || null,
+      data_age_days: dataAgeDays,
+      confidence_level: calculateConfidenceLevel(
+        priceData.data?.points_analysed || 0,
+        dataAgeDays
+      )
     };
 
-    // Map the properties with correct field names
     const properties = floorAreasData.known_floor_areas.map((property: any) => ({
       address: property.address,
       floor_area_sq_ft: property.square_feet,
@@ -69,6 +89,10 @@ async function fetchPropertyData(postcode: string, apiKey: string) {
         price_per_sq_m: priceInfo.price_per_sq_m,
         pricing_date: priceInfo.pricing_date,
         transaction_count: priceInfo.transaction_count,
+        lower_bound_price: priceInfo.lower_bound_price,
+        upper_bound_price: priceInfo.upper_bound_price,
+        data_age_days: priceInfo.data_age_days,
+        confidence_level: priceInfo.confidence_level,
         estimated_value: property.square_feet && priceInfo.price_per_sq_ft 
           ? property.square_feet * priceInfo.price_per_sq_ft 
           : null

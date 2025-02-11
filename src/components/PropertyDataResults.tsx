@@ -35,8 +35,13 @@ const COLUMN_DEFINITIONS = [
   },
   {
     label: "Estimated Value",
-    tooltip: "Estimated property value calculated using the floor area and local price per square foot",
+    tooltip: "Estimated property value with price range based on local market data",
     key: "estimated_value" as keyof PropertyData,
+  },
+  {
+    label: "Confidence",
+    tooltip: "Confidence level in the price estimate based on sample size and data age",
+    key: "confidence_level" as keyof PropertyData,
   },
   {
     label: "Habitable Rooms",
