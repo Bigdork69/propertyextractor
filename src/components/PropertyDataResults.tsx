@@ -1,48 +1,57 @@
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format } from "date-fns";
-import { ArrowUpDown, HelpCircle } from "lucide-react";
+import { Table, TableBody, TableHeader, TableRow } from "@/components/ui/table";
 import { useState } from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { PropertyData } from "@/types/property";
+import { PropertyDataResultsProps, SortConfig } from "@/types/property-table";
+import { getSortedData } from "@/utils/table-utils";
+import { PropertyTableHeaderCell } from "./property-table/PropertyTableHeaderCell";
+import { PropertyTableRow } from "./property-table/PropertyTableRow";
 
-interface PropertyData {
-  address: string;
-  floor_area_sq_ft: number | null;
-  floor_area_sq_m: number | null;
-  habitable_rooms: number;
-  inspection_date: string;
-  price_per_sq_ft?: number | null;
-  price_per_sq_m?: number | null;
-  estimated_value?: number | null;
-  pricing_date?: string | null;
-  transaction_count?: number | null;
-}
-
-interface PropertyDataResultsProps {
-  data: PropertyData[] | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
-const formatCurrency = (value: number | null | undefined) => {
-  if (value === null || value === undefined) return 'N/A';
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    maximumFractionDigits: 0,
-  }).format(value);
-};
+const COLUMN_DEFINITIONS = [
+  {
+    label: "Address",
+    tooltip: "Full property address including house number and street name",
+    key: "address" as keyof PropertyData,
+  },
+  {
+    label: "Floor Area (Square Feet)",
+    tooltip: "Total floor area of the property measured in square feet from EPC data",
+    key: "floor_area_sq_ft" as keyof PropertyData,
+  },
+  {
+    label: "Floor Area (Square Meters)",
+    tooltip: "Total floor area of the property measured in square meters, converted from square feet",
+    key: "floor_area_sq_m" as keyof PropertyData,
+  },
+  {
+    label: "Price per Sq Ft",
+    tooltip: "Average sold price per square foot based on recent transactions in the area",
+    key: "price_per_sq_ft" as keyof PropertyData,
+  },
+  {
+    label: "Price per Sq M",
+    tooltip: "Average sold price per square meter based on recent transactions in the area",
+    key: "price_per_sq_m" as keyof PropertyData,
+  },
+  {
+    label: "Estimated Value",
+    tooltip: "Estimated property value calculated using the floor area and local price per square foot",
+    key: "estimated_value" as keyof PropertyData,
+  },
+  {
+    label: "Habitable Rooms",
+    tooltip: "Number of habitable rooms excluding bathrooms, toilets, halls, and storage spaces",
+    key: "habitable_rooms" as keyof PropertyData,
+  },
+  {
+    label: "Inspection Date",
+    tooltip: "Date when the property was last inspected for the EPC assessment",
+    key: "inspection_date" as keyof PropertyData,
+  },
+];
 
 const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProps) => {
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof PropertyData;
-    direction: 'asc' | 'desc';
-  } | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
   const sortData = (key: keyof PropertyData) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -52,23 +61,6 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
     }
     
     setSortConfig({ key, direction });
-  };
-
-  const getSortedData = () => {
-    if (!data || !sortConfig) return data;
-
-    return [...data].sort((a, b) => {
-      if (a[sortConfig.key] === null) return 1;
-      if (b[sortConfig.key] === null) return -1;
-      
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'asc' ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
   };
 
   if (isLoading) {
@@ -95,7 +87,7 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
     );
   }
 
-  const sortedData = getSortedData();
+  const sortedData = getSortedData(data, sortConfig);
 
   return (
     <div className="w-full mt-8">
@@ -104,175 +96,24 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
           <Table>
             <TableHeader className="bg-[#2D2D3A] sticky top-0">
               <TableRow className="hover:bg-[#2D2D3A]/90 transition-colors">
-                <TableHead 
-                  className="text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
-                  onClick={() => sortData('address')}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center gap-1">
-                        Address
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Full property address including house number and street name</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
-                </TableHead>
-                <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
-                  onClick={() => sortData('floor_area_sq_ft')}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center justify-end gap-1">
-                        Floor Area (Square Feet)
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Total floor area of the property measured in square feet from EPC data</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
-                </TableHead>
-                <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
-                  onClick={() => sortData('floor_area_sq_m')}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center justify-end gap-1">
-                        Floor Area (Square Meters)
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Total floor area of the property measured in square meters, converted from square feet</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
-                </TableHead>
-                <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
-                  onClick={() => sortData('price_per_sq_ft')}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center justify-end gap-1">
-                        Price per Sq Ft
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Average sold price per square foot based on recent transactions in the area</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
-                </TableHead>
-                <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
-                  onClick={() => sortData('price_per_sq_m')}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center justify-end gap-1">
-                        Price per Sq M
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Average sold price per square meter based on recent transactions in the area</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
-                </TableHead>
-                <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
-                  onClick={() => sortData('estimated_value')}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center justify-end gap-1">
-                        Estimated Value
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Estimated property value calculated using the floor area and local price per square foot</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
-                </TableHead>
-                <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
-                  onClick={() => sortData('habitable_rooms')}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center justify-end gap-1">
-                        Habitable Rooms
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Number of habitable rooms excluding bathrooms, toilets, halls, and storage spaces</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
-                </TableHead>
-                <TableHead 
-                  className="text-right text-white font-medium cursor-pointer hover:bg-[#3D3D4A] transition-colors whitespace-nowrap"
-                  onClick={() => sortData('inspection_date')}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="flex items-center justify-end gap-1">
-                        Inspection Date
-                        <HelpCircle className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Date when the property was last inspected for the EPC assessment</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />
-                </TableHead>
+                {COLUMN_DEFINITIONS.map((column) => (
+                  <PropertyTableHeaderCell
+                    key={column.key}
+                    label={column.label}
+                    tooltip={column.tooltip}
+                    sortKey={column.key}
+                    onSort={sortData}
+                  />
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedData?.map((property, index) => (
-                <TableRow 
+                <PropertyTableRow
                   key={`${property.address}-${index}`}
-                  className={`
-                    cursor-pointer 
-                    transition-colors
-                    ${index % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}
-                  `}
-                >
-                  <TableCell className="font-medium text-gray-900 whitespace-nowrap">{property.address}</TableCell>
-                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
-                    {property.floor_area_sq_ft ? property.floor_area_sq_ft.toLocaleString() : 'N/A'}
-                  </TableCell>
-                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
-                    {property.floor_area_sq_m ? property.floor_area_sq_m.toLocaleString() : 'N/A'}
-                  </TableCell>
-                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
-                    {formatCurrency(property.price_per_sq_ft)}
-                  </TableCell>
-                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
-                    {formatCurrency(property.price_per_sq_m)}
-                  </TableCell>
-                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
-                    {formatCurrency(property.estimated_value)}
-                  </TableCell>
-                  <TableCell className="text-right text-gray-700 whitespace-nowrap">{property.habitable_rooms}</TableCell>
-                  <TableCell className="text-right text-gray-700 whitespace-nowrap">
-                    {format(new Date(property.inspection_date), 'yyyy-MM-dd')}
-                  </TableCell>
-                </TableRow>
+                  property={property}
+                  index={index}
+                />
               ))}
             </TableBody>
           </Table>
@@ -283,4 +124,3 @@ const PropertyDataResults = ({ data, isLoading, error }: PropertyDataResultsProp
 };
 
 export default PropertyDataResults;
-
