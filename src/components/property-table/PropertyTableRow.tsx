@@ -26,8 +26,8 @@ const getConfidenceBadgeColor = (level: string | undefined) => {
 };
 
 export const PropertyTableRow = ({ property, index }: PropertyTableRowProps) => {
-  const priceRange = property.lower_bound_price && property.upper_bound_price
-    ? `${formatCurrency(property.lower_bound_price * (property.floor_area_sq_ft || 0))} - ${formatCurrency(property.upper_bound_price * (property.floor_area_sq_ft || 0))}`
+  const priceRange = property.lower_bound_value && property.upper_bound_value
+    ? `${formatCurrency(property.lower_bound_value)} - ${formatCurrency(property.upper_bound_value)}`
     : 'N/A';
 
   return (

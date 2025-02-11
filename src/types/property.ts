@@ -12,6 +12,8 @@ export interface PropertyData {
   transaction_count?: number | null;
   lower_bound_price?: number | null;
   upper_bound_price?: number | null;
+  lower_bound_value?: number | null;
+  upper_bound_value?: number | null;
   confidence_level?: 'High' | 'Medium' | 'Low';
   data_age_days?: number | null;
 }
@@ -24,3 +26,4 @@ export interface PriceConfidenceData {
   sample_size: number;
   data_age_days: number;
 }
+
